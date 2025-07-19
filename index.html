@@ -190,7 +190,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Inspirado no Hill Chart da <a href="https://basecamp.com/features/hill-charts" target="_blank" class="text-[#FF4E00] hover:underline">Basecamp</a>.</p>
+        <p>Versão 1.0.56</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -679,9 +679,9 @@
                     // O N8N deve retornar um JSON com uma propriedade "success"
                     if (data.success === true) {
                         // Login bem-sucedido
-                        loginPage.classList.add('hidden');
-                        mainApp.classList.remove('hidden');
-                        footer.classList.remove('hidden');
+                        loginPage.style.display = 'none';
+                        mainApp.style.display = 'block';
+                        footer.style.display = 'block';
                         initializeMainApp();
                     } else {
                         // Falha no login (credenciais inválidas, mas a API respondeu)
@@ -734,10 +734,10 @@
                 // Verifica se está em um dispositivo móvel
                 if (window.innerWidth < 1024) {
                     mobileWarning.classList.remove('hidden');
-                    loginPage.classList.add('hidden');
+                    loginPage.style.display = 'none';
                 } else {
                     mobileWarning.classList.add('hidden');
-                    loginPage.classList.remove('hidden');
+                    loginPage.style.display = 'block';
                     loginForm.addEventListener('submit', handleLogin);
                 }
             }

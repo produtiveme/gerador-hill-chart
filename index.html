@@ -201,7 +201,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.64</p>
+        <p>Versão 1.0.65</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -715,7 +715,7 @@
 
             async function loadProjects() {
                 // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para buscar projetos !!!
-                const n8nProjectsUrl = 'https://work.produ-cloud.com/webhook-test/hillchartcarregaprojeto';
+                const n8nProjectsUrl = 'https://work.produ-cloud.com/webhook/hillchartcarregaprojeto';
                 
                 projectList.innerHTML = '';
                 projectListLoader.style.display = 'block';

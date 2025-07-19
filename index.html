@@ -666,15 +666,26 @@
                         body: JSON.stringify({ email, password }),
                     });
 
-                    if (response.ok) {
+                    // Primeiro, verifique se a resposta da rede foi OK (ex: status 200)
+                    if (!response.ok) {
+                        // Se o N8N retornar um erro (401, 403, 500), trate aqui.
+                        throw new Error('Falha na autenticação ou erro no servidor.');
+                    }
+
+                    // Se a resposta da rede foi OK, analise o corpo JSON
+                    const data = await response.json();
+
+                    // Agora, verifique o conteúdo da resposta JSON
+                    // O N8N deve retornar um JSON com uma propriedade "success"
+                    if (data.success === true) {
                         // Login bem-sucedido
                         loginPage.classList.add('hidden');
                         mainApp.classList.remove('hidden');
                         footer.classList.remove('hidden');
                         initializeMainApp();
                     } else {
-                        // Falha no login
-                        loginError.textContent = 'Email ou senha inválidos.';
+                        // Falha no login (credenciais inválidas, mas a API respondeu)
+                        loginError.textContent = data.message || 'Email ou senha inválidos.';
                         loginError.classList.remove('hidden');
                     }
                 } catch (error) {

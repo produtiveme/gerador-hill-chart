@@ -201,7 +201,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.62</p>
+        <p>Versão 1.0.64</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -676,7 +676,7 @@
                 loginButton.textContent = 'Entrando...';
 
                 // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N !!!
-                const n8nWebhookUrl = 'https://work.produ-cloud.com/webhook-test/hillchartlogin'; 
+                const n8nWebhookUrl = 'https://work.produ-cloud.com/webhook/hillchartlogin'; 
 
                 try {
                     const response = await fetch(n8nWebhookUrl, {

@@ -126,12 +126,23 @@
             </form>
         </div>
     </div>
+    
+    <!-- Tela de Seleção de Projetos -->
+    <div id="project-selection-page" class="w-full max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
+        <h1 class="text-3xl font-bold text-gray-800">Selecione um Projeto</h1>
+        <div id="project-list-loader" class="mt-4 text-center">Carregando projetos...</div>
+        <ul id="project-list" class="mt-6 space-y-3">
+            <!-- Projetos serão inseridos aqui dinamicamente -->
+        </ul>
+    </div>
+
 
     <!-- Conteúdo Principal da Aplicação (visível apenas em Desktop e após login) -->
     <div id="main-app" class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
-        <header class="text-center mb-4">
+        <header class="text-center mb-4 relative">
+             <button id="back-to-projects-btn" class="absolute top-0 left-0 bg-gray-200 text-gray-700 font-semibold px-3 py-1 rounded-lg hover:bg-gray-300 transition-colors">&larr; Voltar</button>
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Hill Chart</h1>
-            <p class="text-gray-500 mt-2">Adicione funcionalidades e arraste os pontos para indicar o progresso.</p>
+            <p id="project-title-display" class="text-gray-500 mt-2"></p>
         </header>
 
         <!-- Progresso Total do Projeto -->
@@ -190,7 +201,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.56</p>
+        <p>Versão 1.0.62</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -208,15 +219,23 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Elementos Globais e de Login ---
+            // --- Elementos Globais e de Navegação ---
             const loginPage = document.getElementById('login-page');
+            const projectSelectionPage = document.getElementById('project-selection-page');
             const mainApp = document.getElementById('main-app');
             const footer = document.getElementById('footer');
+            const mobileWarning = document.getElementById('mobile-warning');
+
+            // --- Elementos de Login ---
             const loginForm = document.getElementById('login-form');
             const emailInput = document.getElementById('email');
             const passwordInput = document.getElementById('password');
             const loginError = document.getElementById('login-error');
-            const mobileWarning = document.getElementById('mobile-warning');
+
+            // --- Elementos da Seleção de Projetos ---
+            const projectList = document.getElementById('project-list');
+            const projectListLoader = document.getElementById('project-list-loader');
+            let projectsData = []; // Armazena os dados dos projetos
 
             // --- Configurações do Gráfico ---
             const svg = document.getElementById('hill-chart-svg');
@@ -249,6 +268,8 @@
             const mermaidCodeTextarea = document.getElementById('mermaid-code');
             const copyMermaidBtn = document.getElementById('copy-mermaid-btn');
             const closeMermaidModalBtn = document.getElementById('close-mermaid-modal-btn');
+            const backToProjectsBtn = document.getElementById('back-to-projects-btn');
+            const projectTitleDisplay = document.getElementById('project-title-display');
 
 
             // --- Funções de Desenho e Lógica ---
@@ -655,7 +676,7 @@
                 loginButton.textContent = 'Entrando...';
 
                 // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N !!!
-                const n8nWebhookUrl = 'https://work.produ-cloud.com/webhook/hillchartlogin'; 
+                const n8nWebhookUrl = 'https://work.produ-cloud.com/webhook-test/hillchartlogin'; 
 
                 try {
                     const response = await fetch(n8nWebhookUrl, {
@@ -666,25 +687,19 @@
                         body: JSON.stringify({ email, password }),
                     });
 
-                    // Primeiro, verifique se a resposta da rede foi OK (ex: status 200)
                     if (!response.ok) {
-                        // Se o N8N retornar um erro (401, 403, 500), trate aqui.
                         throw new Error('Falha na autenticação ou erro no servidor.');
                     }
 
-                    // Se a resposta da rede foi OK, analise o corpo JSON
                     const data = await response.json();
 
-                    // Agora, verifique o conteúdo da resposta JSON
-                    // O N8N deve retornar um JSON com uma propriedade "success"
                     if (data.success === true) {
                         // Login bem-sucedido
                         loginPage.style.display = 'none';
-                        mainApp.style.display = 'block';
-                        footer.style.display = 'block';
-                        initializeMainApp();
+                        projectSelectionPage.style.display = 'block';
+                        await loadProjects();
                     } else {
-                        // Falha no login (credenciais inválidas, mas a API respondeu)
+                        // Falha no login
                         loginError.textContent = data.message || 'Email ou senha inválidos.';
                         loginError.classList.remove('hidden');
                     }
@@ -696,6 +711,80 @@
                     loginButton.disabled = false;
                     loginButton.textContent = 'Entrar';
                 }
+            }
+
+            async function loadProjects() {
+                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para buscar projetos !!!
+                const n8nProjectsUrl = 'https://work.produ-cloud.com/webhook-test/hillchartcarregaprojeto';
+                
+                projectList.innerHTML = '';
+                projectListLoader.style.display = 'block';
+
+                try {
+                    const response = await fetch(n8nProjectsUrl);
+                    if (!response.ok) {
+                        throw new Error('Não foi possível carregar os projetos.');
+                    }
+                    projectsData = await response.json(); // Espera um array: [{ projectName: "...", jsonData: "[...]" }]
+
+                    projectListLoader.style.display = 'none';
+                    if (projectsData.length === 0) {
+                        projectList.innerHTML = '<li>Nenhum projeto encontrado.</li>';
+                        return;
+                    }
+
+                    projectsData.forEach((project, index) => {
+                        const li = document.createElement('li');
+                        li.className = 'p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors';
+                        li.textContent = project.projectName;
+                        li.dataset.index = index; // Usa o índice para encontrar os dados no array
+                        projectList.appendChild(li);
+                    });
+
+                } catch (error) {
+                    console.error('Erro ao carregar projetos:', error);
+                    projectListLoader.style.display = 'none';
+                    projectList.innerHTML = '<li>Ocorreu um erro ao carregar os projetos.</li>';
+                }
+            }
+            
+            function handleProjectSelection(e) {
+                if (e.target.tagName === 'LI') {
+                    const projectIndex = e.target.dataset.index;
+                    const selectedProject = projectsData[projectIndex];
+                    
+                    if (selectedProject && selectedProject.jsonData) {
+                        projectSelectionPage.style.display = 'none';
+                        mainApp.style.display = 'block';
+                        footer.style.display = 'block';
+                        
+                        projectTitleDisplay.textContent = selectedProject.projectName;
+                        
+                        try {
+                            const importedData = JSON.parse(selectedProject.jsonData);
+                            if (Array.isArray(importedData)) {
+                                points = importedData;
+                                nextPointId = points.length > 0 ? Math.max(...points.map(p => p.id)) + 1 : 0;
+                                renderPoints();
+                            } else {
+                                throw new Error("JSON data is not an array.");
+                            }
+                        } catch (error) {
+                            alert("Erro ao carregar os dados do projeto. O formato JSON é inválido.");
+                            console.error("Erro no parse do JSON do projeto:", error);
+                            // Volta para a tela de seleção se houver erro
+                            showProjectSelection();
+                        }
+                    }
+                }
+            }
+            
+            function showProjectSelection() {
+                mainApp.style.display = 'none';
+                footer.style.display = 'none';
+                projectSelectionPage.style.display = 'block';
+                // Opcional: Recarregar a lista de projetos
+                // loadProjects(); 
             }
 
             function initializeMainApp() {
@@ -739,6 +828,9 @@
                     mobileWarning.classList.add('hidden');
                     loginPage.style.display = 'block';
                     loginForm.addEventListener('submit', handleLogin);
+                    projectList.addEventListener('click', handleProjectSelection);
+                    backToProjectsBtn.addEventListener('click', showProjectSelection);
+                    initializeMainApp(); // Inicializa os listeners da app principal uma vez
                 }
             }
 

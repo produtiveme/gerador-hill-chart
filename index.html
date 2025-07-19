@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Hill Chart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFF9F3;
+        }
+        h1, h2, h3 {
+            font-family: 'Bricolage Grotesque', sans-serif;
+        }
+        .point-label {
+            font-size: 12px;
+            fill: #333;
+            text-anchor: middle;
+            pointer-events: none;
+            user-select: none;
+            font-family: 'Inter', sans-serif;
+        }
+        .point-circle {
+            cursor: grab;
+            transition: r 0.2s ease-in-out, filter 0.2s ease-in-out;
+        }
+        .point-circle:hover {
+            r: 10px;
+            filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));
+        }
+        .point-circle:active {
+            cursor: grabbing;
+        }
+        .delete-btn {
+            cursor: pointer;
+            color: #ef4444;
+            font-weight: bold;
+            margin-left: 8px;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .delete-btn:hover {
+            transform: scale(1.2);
+        }
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .color-option.selected {
+            border-color: #a7a7a7;
+        }
+        /* Estilos do Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: scale(0.95);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Mensagem para Mobile -->
+    <div id="mobile-warning" class="lg:hidden flex flex-col items-center justify-center text-center p-8">
+        <svg class="w-16 h-16 text-[#FF4E00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h9.75a2.25 2.25 0 0 1 2.25 2.25Z" />
+        </svg>
+        <h1 class="text-2xl font-bold mt-4 text-gray-800">Acesso via Desktop</h1>
+        <p class="mt-2 text-gray-600">Para a melhor experiência, por favor, utilize um computador para acessar esta aplicação.</p>
+    </div>
+
+    <!-- Conteúdo Principal da Aplicação (visível apenas em Desktop) -->
+    <div id="main-app" class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden lg:block">
+        <header class="text-center mb-4">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Hill Chart</h1>
+            <p class="text-gray-500 mt-2">Adicione funcionalidades e arraste os pontos para indicar o progresso.</p>
+        </header>
+
+        <!-- Progresso Total do Projeto -->
+        <div class="mb-6 px-1">
+            <div class="flex justify-between items-center mb-1">
+                <h3 class="text-md font-semibold text-[#6B9E83]">Progresso Total do Projeto</h3>
+                <span id="total-progress-text" class="text-md font-bold text-[#FF4E00]">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="total-progress-bar" class="bg-[#FF4E00] h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Contêiner do Gráfico -->
+        <div id="chart-container" class="relative w-full mb-6 bg-white">
+            <svg id="hill-chart-svg" class="w-full" viewBox="0 0 800 250"></svg>
+            <div class="flex justify-between mt-2 text-sm md:text-base font-semibold text-gray-600 px-2">
+                <span class="text-left w-1/3">Descobrindo a solução<br><span class="font-normal text-gray-500">(Uphill)</span></span>
+                <span class="text-center w-1/3 text-[#FF4E00]">Solução conhecida!</span>
+                <span class="text-right w-1/3">Executando o trabalho<br><span class="font-normal text-gray-500">(Downhill)</span></span>
+            </div>
+        </div>
+
+        <!-- Controles -->
+        <div class="space-y-4">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input type="text" id="new-point-label" class="flex-grow w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4E00] focus:border-[#FF4E00] transition" placeholder="Nome da nova funcionalidade...">
+                <div id="color-palette" class="flex items-center justify-center gap-2 p-2 bg-gray-100 rounded-lg">
+                    <div class="color-option selected" style="background-color: #FF4E00;" data-color="#FF4E00"></div>
+                    <div class="color-option" style="background-color: #FFC280;" data-color="#FFC280"></div>
+                    <div class="color-option" style="background-color: #1D1C1B;" data-color="#1D1C1B"></div>
+                    <div class="color-option" style="background-color: #6B9E83;" data-color="#6B9E83"></div>
+                </div>
+            </div>
+             <div class="flex flex-col sm:flex-row gap-3">
+                <button id="add-point-btn" class="w-full sm:w-auto flex-grow bg-[#FF4E00] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#E64600] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF4E00] transition-colors shadow-md">
+                    Adicionar Funcionalidade
+                </button>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                 <button id="import-json-btn" class="w-full bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors shadow-md">Importar JSON</button>
+                 <button id="export-json-btn" class="w-full bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors shadow-md">Exportar JSON</button>
+                 <button id="export-png-btn" class="w-full bg-[#6B9E83] text-white font-semibold px-4 py-2 rounded-lg hover:bg-[#5A8670] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6B9E83] transition-colors shadow-md">Exportar PNG</button>
+                 <button id="export-mermaid-btn" class="w-full bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-700 transition-colors shadow-md">Exportar Mermaid</button>
+            </div>
+        </div>
+        
+        <!-- Lista de Funcionalidades -->
+        <div id="task-list-container" class="mt-6">
+            <h3 class="text-lg font-semibold text-[#6B9E83] mb-2">Funcionalidades do Sistema:</h3>
+            <ul id="task-list" class="list-none text-gray-600 space-y-1">
+            </ul>
+        </div>
+    </div>
+    
+    <input type="file" id="import-file-input" class="hidden" accept=".json">
+
+    <footer class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
+        <p>Inspirado no Hill Chart da <a href="https://basecamp.com/features/hill-charts" target="_blank" class="text-[#FF4E00] hover:underline">Basecamp</a>.</p>
+    </footer>
+
+    <!-- Modal para Exportação Mermaid -->
+    <div id="mermaid-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Código Mermaid Gerado</h2>
+            <p class="text-gray-600 mb-4">Copie o código abaixo e cole em qualquer editor que suporte Mermaid.js.</p>
+            <textarea id="mermaid-code" readonly class="w-full h-48 p-2 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"></textarea>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="copy-mermaid-btn" class="bg-[#FF4E00] text-white font-semibold px-5 py-2 rounded-lg hover:bg-[#E64600] transition-colors">Copiar</button>
+                <button id="close-mermaid-modal-btn" class="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300 transition-colors">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Configurações do Gráfico ---
+            const svg = document.getElementById('hill-chart-svg');
+            const svgNS = "http://www.w3.org/2000/svg";
+            const width = 800;
+            const height = 250;
+            const hillHeight = 150;
+            const baseY = 210;
+            const hillTopX = width / 2;
+
+            // --- Estado da Aplicação ---
+            let points = [];
+            let selectedPoint = null;
+            let isDragging = false;
+            let nextPointId = 0;
+
+            // --- Elementos da UI ---
+            const addPointBtn = document.getElementById('add-point-btn');
+            const newPointInput = document.getElementById('new-point-label');
+            const taskList = document.getElementById('task-list');
+            const exportPngBtn = document.getElementById('export-png-btn');
+            const exportMermaidBtn = document.getElementById('export-mermaid-btn');
+            const exportJsonBtn = document.getElementById('export-json-btn');
+            const importJsonBtn = document.getElementById('import-json-btn');
+            const importFileInput = document.getElementById('import-file-input');
+            const colorPalette = document.getElementById('color-palette');
+            const totalProgressBar = document.getElementById('total-progress-bar');
+            const totalProgressText = document.getElementById('total-progress-text');
+            const mermaidModal = document.getElementById('mermaid-modal');
+            const mermaidCodeTextarea = document.getElementById('mermaid-code');
+            const copyMermaidBtn = document.getElementById('copy-mermaid-btn');
+            const closeMermaidModalBtn = document.getElementById('close-mermaid-modal-btn');
+
+
+            // --- Funções de Desenho e Lógica ---
+
+            function drawHill() {
+                if (!svg) return;
+                svg.innerHTML = '';
+                const hillFill = document.createElementNS(svgNS, 'path');
+                hillFill.setAttribute('d', `M 0 ${baseY} Q ${hillTopX} ${baseY - hillHeight * 2} ${width} ${baseY} Z`);
+                hillFill.setAttribute('fill', 'url(#hillGradient)');
+                svg.appendChild(hillFill);
+                const hillLine = document.createElementNS(svgNS, 'path');
+                hillLine.setAttribute('d', `M 0 ${baseY} Q ${hillTopX} ${baseY - hillHeight * 2} ${width} ${baseY}`);
+                hillLine.setAttribute('stroke', '#cbd5e1');
+                hillLine.setAttribute('stroke-width', '4');
+                hillLine.setAttribute('fill', 'none');
+                svg.appendChild(hillLine);
+                const topMarker = document.createElementNS(svgNS, 'line');
+                topMarker.setAttribute('x1', hillTopX);
+                topMarker.setAttribute('y1', baseY - hillHeight - 10);
+                topMarker.setAttribute('x2', hillTopX);
+                topMarker.setAttribute('y2', baseY);
+                topMarker.setAttribute('stroke', '#FF4E00');
+                topMarker.setAttribute('stroke-width', '2');
+                topMarker.setAttribute('stroke-dasharray', '4 4');
+                svg.appendChild(topMarker);
+                const defs = document.createElementNS(svgNS, 'defs');
+                const gradient = document.createElementNS(svgNS, 'linearGradient');
+                gradient.id = 'hillGradient';
+                gradient.setAttribute('x1', '0%'); gradient.setAttribute('y1', '0%');
+                gradient.setAttribute('x2', '0%'); gradient.setAttribute('y2', '100%');
+                const stop1 = document.createElementNS(svgNS, 'stop');
+                stop1.setAttribute('offset', '0%'); stop1.setAttribute('style', 'stop-color:#f3f4f6;stop-opacity:1');
+                const stop2 = document.createElementNS(svgNS, 'stop');
+                stop2.setAttribute('offset', '100%'); stop2.setAttribute('style', 'stop-color:#e5e7eb;stop-opacity:1');
+                gradient.appendChild(stop1); gradient.appendChild(stop2);
+                defs.appendChild(gradient);
+                svg.appendChild(defs);
+                const pointsGroup = document.createElementNS(svgNS, 'g');
+                pointsGroup.id = 'points-group';
+                svg.appendChild(pointsGroup);
+            }
+
+            function getPositionOnHill(progress) {
+                const t = progress / 100;
+                const p0 = { x: 0, y: baseY };
+                const p1 = { x: hillTopX, y: baseY - hillHeight * 2 };
+                const p2 = { x: width, y: baseY };
+                const x = Math.pow(1 - t, 2) * p0.x + 2 * (1 - t) * t * p1.x + Math.pow(t, 2) * p2.x;
+                const y = Math.pow(1 - t, 2) * p0.y + 2 * (1 - t) * t * p1.y + Math.pow(t, 2) * p2.y;
+                return { x, y };
+            }
+
+            function renderPoints() {
+                const pointsGroup = document.getElementById('points-group');
+                if (!pointsGroup) return;
+                pointsGroup.innerHTML = '';
+                points.forEach(point => {
+                    const pos = getPositionOnHill(point.progress);
+                    const pointGroup = document.createElementNS(svgNS, 'g');
+                    pointGroup.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+                    const circle = document.createElementNS(svgNS, 'circle');
+                    circle.setAttribute('r', '8');
+                    circle.setAttribute('fill', point.color);
+                    circle.setAttribute('stroke', 'white');
+                    circle.setAttribute('stroke-width', '2');
+                    circle.setAttribute('class', 'point-circle');
+                    circle.dataset.id = point.id;
+                    const label = document.createElementNS(svgNS, 'text');
+                    label.setAttribute('class', 'point-label');
+                    label.setAttribute('y', '-15');
+                    label.textContent = point.label;
+                    pointGroup.appendChild(circle);
+                    pointGroup.appendChild(label);
+                    pointsGroup.appendChild(pointGroup);
+                });
+                updateTaskList();
+                updateTotalProgress();
+            }
+            
+            function updateTaskList() {
+                if (!taskList) return;
+                taskList.innerHTML = '';
+                if (points.length === 0) {
+                    taskList.innerHTML = '<li class="p-1 text-gray-400">Nenhuma funcionalidade adicionada ainda.</li>';
+                } else {
+                    points.forEach(point => {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center justify-between p-1 rounded-md hover:bg-gray-50';
+                        const leftSide = document.createElement('div');
+                        leftSide.className = 'flex items-center';
+                        const colorDot = document.createElement('span');
+                        colorDot.className = 'w-3 h-3 rounded-full mr-3';
+                        colorDot.style.backgroundColor = point.color;
+                        const text = document.createElement('span');
+                        text.textContent = `${point.label} (${point.progress.toFixed(0)}%)`;
+                        leftSide.appendChild(colorDot);
+                        leftSide.appendChild(text);
+                        const deleteBtn = document.createElement('span');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.innerHTML = '&times;';
+                        deleteBtn.dataset.id = point.id;
+                        li.appendChild(leftSide);
+                        li.appendChild(deleteBtn);
+                        taskList.appendChild(li);
+                    });
+                }
+            }
+            
+            function updateTotalProgress() {
+                if (!totalProgressText || !totalProgressBar) return;
+                if (points.length === 0) {
+                    totalProgressText.textContent = '0%';
+                    totalProgressBar.style.width = '0%';
+                    return;
+                }
+                const total = points.reduce((sum, point) => sum + point.progress, 0);
+                const average = total / points.length;
+                
+                totalProgressText.textContent = `${average.toFixed(0)}%`;
+                totalProgressBar.style.width = `${average}%`;
+            }
+
+            function handleAddPoint() {
+                const label = newPointInput.value.trim();
+                const selectedColor = colorPalette.querySelector('.selected').dataset.color;
+                if (label && selectedColor) {
+                    points.push({
+                        id: nextPointId++,
+                        label: label,
+                        progress: 5,
+                        color: selectedColor
+                    });
+                    newPointInput.value = '';
+                    renderPoints();
+                } else {
+                    newPointInput.classList.add('border-red-500');
+                    setTimeout(() => newPointInput.classList.remove('border-red-500'), 1000);
+                }
+            }
+
+            function handleDeletePoint(e) {
+                if (e.target.classList.contains('delete-btn')) {
+                    const idToDelete = parseInt(e.target.dataset.id, 10);
+                    points = points.filter(p => p.id !== idToDelete);
+                    renderPoints();
+                }
+            }
+            
+            async function handleExportPng() {
+                const originalBtnHTML = exportPngBtn.innerHTML;
+                exportPngBtn.disabled = true;
+                exportPngBtn.innerHTML = `Exportando...`;
+                
+                try {
+                    // Define tamanhos e espaçamentos
+                    const exportWidth = 800;
+                    const chartAreaHeight = 280; // Altura para o gráfico e suas legendas
+                    const sectionSpacing = 20;
+                    const progressBarHeight = 50;
+                    const listTitleHeight = 30;
+                    const listItemHeight = 22;
+                    const footerHeight = 40;
+
+                    // Calcula altura total dinâmica
+                    const listHeight = points.length > 0 ? listTitleHeight + (points.length * listItemHeight) : 0;
+                    const exportHeight = chartAreaHeight + progressBarHeight + sectionSpacing + listHeight + footerHeight;
+
+                    const exportSvg = document.createElementNS(svgNS, 'svg');
+                    exportSvg.setAttribute('xmlns', svgNS);
+                    exportSvg.setAttribute('width', exportWidth);
+                    exportSvg.setAttribute('height', exportHeight);
+                    exportSvg.setAttribute('viewBox', `0 0 ${exportWidth} ${exportHeight}`);
+                    
+                    const background = document.createElementNS(svgNS, 'rect');
+                    background.setAttribute('width', '100%');
+                    background.setAttribute('height', '100%');
+                    background.setAttribute('fill', 'white');
+                    exportSvg.appendChild(background);
+                    
+                    const cssStyles = document.querySelector('style').textContent;
+                    const defs = document.createElementNS(svgNS, 'defs');
+                    const style = document.createElementNS(svgNS, 'style');
+                    style.textContent = cssStyles;
+                    defs.appendChild(style);
+                    exportSvg.appendChild(defs);
+                    
+                    // Adiciona o conteúdo do gráfico
+                    const chartGroup = document.createElementNS(svgNS, 'g');
+                    chartGroup.innerHTML = svg.innerHTML;
+                    exportSvg.appendChild(chartGroup);
+
+                    // Função auxiliar para criar texto
+                    const createText = (text, x, y, anchor, weight = 'normal', size = '14px', color = '#333', family = 'Inter, sans-serif') => {
+                        const el = document.createElementNS(svgNS, 'text');
+                        el.textContent = text;
+                        el.setAttribute('x', x);
+                        el.setAttribute('y', y);
+                        el.setAttribute('text-anchor', anchor);
+                        el.setAttribute('font-family', family);
+                        el.setAttribute('font-size', size);
+                        el.setAttribute('font-weight', weight);
+                        el.setAttribute('fill', color);
+                        return el;
+                    };
+                    
+                    // Adiciona as legendas do gráfico na posição correta
+                    const chartLabelsY = 240;
+                    exportSvg.appendChild(createText('Descobrindo a solução', 20, chartLabelsY, 'start', '600', '14px', '#4b5563'));
+                    exportSvg.appendChild(createText('(Uphill)', 20, chartLabelsY + 15, 'start', 'normal', '12px', '#6b7280'));
+                    
+                    exportSvg.appendChild(createText('Solução conhecida!', exportWidth / 2, chartLabelsY, 'middle', '700', '14px', '#FF4E00'));
+
+                    exportSvg.appendChild(createText('Executando o trabalho', exportWidth - 20, chartLabelsY, 'end', '600', '14px', '#4b5563'));
+                    exportSvg.appendChild(createText('(Downhill)', exportWidth - 20, chartLabelsY + 15, 'end', 'normal', '12px', '#6b7280'));
+
+                    let currentY = chartAreaHeight;
+
+                    // Adicionar Barra de Progresso Total
+                    const average = points.length > 0 ? points.reduce((sum, p) => sum + p.progress, 0) / points.length : 0;
+                    exportSvg.appendChild(createText('Progresso Total do Projeto', 40, currentY, 'start', '600', '16px', '#6B9E83', 'Bricolage Grotesque, sans-serif'));
+                    exportSvg.appendChild(createText(`${average.toFixed(0)}%`, exportWidth - 40, currentY, 'end', 'bold', '16px', '#FF4E00'));
+                    currentY += 20;
+                    const progressBarBg = document.createElementNS(svgNS, 'rect');
+                    progressBarBg.setAttribute('x', 40);
+                    progressBarBg.setAttribute('y', currentY);
+                    progressBarBg.setAttribute('width', exportWidth - 80);
+                    progressBarBg.setAttribute('height', 10);
+                    progressBarBg.setAttribute('fill', '#e5e7eb');
+                    progressBarBg.setAttribute('rx', 5);
+                    exportSvg.appendChild(progressBarBg);
+                    const progressBarFg = document.createElementNS(svgNS, 'rect');
+                    progressBarFg.setAttribute('x', 40);
+                    progressBarFg.setAttribute('y', currentY);
+                    progressBarFg.setAttribute('width', (exportWidth - 80) * (average / 100));
+                    progressBarFg.setAttribute('height', 10);
+                    progressBarFg.setAttribute('fill', '#FF4E00');
+                    progressBarFg.setAttribute('rx', 5);
+                    exportSvg.appendChild(progressBarFg);
+                    currentY += progressBarHeight;
+
+                    // Adicionar Lista de Funcionalidades
+                    if (points.length > 0) {
+                        currentY += sectionSpacing;
+                        exportSvg.appendChild(createText('Funcionalidades do Sistema:', 40, currentY, 'start', '600', '18px', '#6B9E83', 'Bricolage Grotesque, sans-serif'));
+                        currentY += listTitleHeight;
+                        points.forEach(point => {
+                            const colorDot = document.createElementNS(svgNS, 'circle');
+                            colorDot.setAttribute('cx', 50);
+                            colorDot.setAttribute('cy', currentY - 4);
+                            colorDot.setAttribute('r', 5);
+                            colorDot.setAttribute('fill', point.color);
+                            exportSvg.appendChild(colorDot);
+                            exportSvg.appendChild(createText(`${point.label} (${point.progress.toFixed(0)}%)`, 65, currentY, 'start'));
+                            currentY += listItemHeight;
+                        });
+                    }
+                    
+                    // Adicionar Rodapé
+                    const footerText = createText('www.produtive.me', exportWidth / 2, exportHeight - 20, 'middle', '400', '12px', '#9ca3af');
+                    exportSvg.appendChild(footerText);
+
+                    const svgString = new XMLSerializer().serializeToString(exportSvg);
+                    const svgDataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+                    
+                    await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.src = svgDataUrl;
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = exportWidth;
+                            canvas.height = exportHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            const pngDataUrl = canvas.toDataURL('image/png');
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = pngDataUrl;
+                            downloadLink.download = 'hc_produtiveme.png';
+                            document.body.appendChild(downloadLink);
+                            downloadLink.click();
+                            document.body.removeChild(downloadLink);
+                            resolve();
+                        };
+                        img.onerror = reject;
+                    });
+                } catch (error) {
+                    console.error("Falha ao exportar o gráfico:", error);
+                } finally {
+                    exportPngBtn.disabled = false;
+                    exportPngBtn.innerHTML = `Exportar PNG`;
+                }
+            }
+
+            function handleExportToMermaid() {
+                if (points.length === 0) {
+                    alert("Adicione pelo menos uma funcionalidade para exportar para Mermaid.");
+                    return;
+                }
+
+                let mermaidString = 'quadrantChart\n';
+                mermaidString += '  title Hill Chart - www.produtive.me\n';
+                mermaidString += '  x-axis Descobrindo --> Executando\n';
+                mermaidString += '  y-axis Incerteza --> Certeza\n';
+                mermaidString += '  quadrant-1 "Downhill"\n';
+                mermaidString += '  quadrant-2 "Topo da Colina"\n';
+                mermaidString += '  quadrant-3 "Uphill"\n';
+                mermaidString += '  quadrant-4 "Downhill (Início)"\n';
+
+                points.forEach(point => {
+                    const progress = point.progress;
+                    const x = progress / 100;
+                    const y = (progress <= 50) ? (progress / 50) : ((100 - progress) / 50);
+                    mermaidString += `  "${point.label}": [${x.toFixed(2)}, ${y.toFixed(2)}]\n`;
+                });
+
+                mermaidCodeTextarea.value = mermaidString;
+                mermaidModal.classList.add('visible');
+            }
+            
+            function handleExportJson() {
+                if (points.length === 0) {
+                    alert("Não há nada para exportar. Adicione algumas funcionalidades primeiro.");
+                    return;
+                }
+                const jsonString = JSON.stringify(points, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'hc_produtiveme.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function handleImportJson() {
+                importFileInput.click();
+            }
+
+            function handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        // Validação simples
+                        if (Array.isArray(importedData) && (importedData.length === 0 || (importedData[0].id !== undefined && importedData[0].label && importedData[0].progress !== undefined))) {
+                            points = importedData;
+                            nextPointId = points.length > 0 ? Math.max(...points.map(p => p.id)) + 1 : 0;
+                            renderPoints();
+                        } else {
+                            alert("Arquivo JSON inválido ou formato incorreto.");
+                        }
+                    } catch (error) {
+                        alert("Erro ao ler o arquivo JSON. Verifique se o arquivo está formatado corretamente.");
+                        console.error("Erro no parse do JSON:", error);
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = null; // Permite re-importar o mesmo arquivo
+            }
+
+
+            function onMouseDown(e) {
+                if (e.target.classList.contains('point-circle')) {
+                    selectedPoint = points.find(p => p.id == e.target.dataset.id);
+                    if (selectedPoint) { isDragging = true; e.target.style.cursor = 'grabbing'; }
+                }
+            }
+
+            function onMouseMove(e) {
+                if (!isDragging || !selectedPoint) return;
+                e.preventDefault();
+                const svgRect = svg.getBoundingClientRect();
+                const mouseX = e.clientX - svgRect.left;
+                let progress = (mouseX / svgRect.width) * 100;
+                progress = Math.max(0, Math.min(100, progress));
+                selectedPoint.progress = progress;
+                renderPoints();
+            }
+
+            function onMouseUp() { if (isDragging) { isDragging = false; selectedPoint = null; renderPoints(); } }
+            
+            function onMouseLeave() { if (isDragging) { onMouseUp(); } }
+            
+            function handleColorSelect(e) {
+                if(e.target.classList.contains('color-option')) {
+                    colorPalette.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                }
+            }
+
+            function init() {
+                // Verifica se está em um dispositivo móvel antes de inicializar o app
+                if (window.innerWidth < 1024) {
+                    return; // Não inicializa o app se a tela for pequena
+                }
+
+                drawHill();
+                renderPoints();
+                addPointBtn.addEventListener('click', handleAddPoint);
+                newPointInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleAddPoint(); } });
+                exportPngBtn.addEventListener('click', handleExportPng);
+                exportMermaidBtn.addEventListener('click', handleExportToMermaid);
+                exportJsonBtn.addEventListener('click', handleExportJson);
+                importJsonBtn.addEventListener('click', handleImportJson);
+                importFileInput.addEventListener('change', handleFileSelect);
+                taskList.addEventListener('click', handleDeletePoint);
+                colorPalette.addEventListener('click', handleColorSelect);
+                
+                // Modal listeners
+                closeMermaidModalBtn.addEventListener('click', () => mermaidModal.classList.remove('visible'));
+                copyMermaidBtn.addEventListener('click', () => {
+                    mermaidCodeTextarea.select();
+                    document.execCommand('copy');
+                    copyMermaidBtn.textContent = 'Copiado!';
+                    setTimeout(() => { copyMermaidBtn.textContent = 'Copiar'; }, 2000);
+                });
+
+                svg.addEventListener('mousedown', onMouseDown);
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                svg.addEventListener('mouseleave', onMouseLeave);
+                svg.addEventListener('touchstart', (e) => { const touch = e.touches[0]; onMouseDown(new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY, target: touch.target })); }, { passive: true });
+                document.addEventListener('touchmove', (e) => { if (!isDragging) return; e.preventDefault(); const touch = e.touches[0]; onMouseMove(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY })); }, { passive: false });
+                document.addEventListener('touchend', onMouseUp);
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

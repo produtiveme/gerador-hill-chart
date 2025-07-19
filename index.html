@@ -103,8 +103,32 @@
         <p class="mt-2 text-gray-600">Para a melhor experiência, por favor, utilize um computador para acessar esta aplicação.</p>
     </div>
 
-    <!-- Conteúdo Principal da Aplicação (visível apenas em Desktop) -->
-    <div id="main-app" class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden lg:block">
+    <!-- Tela de Login -->
+    <div id="login-page" class="w-full max-w-sm mx-auto hidden lg:block">
+        <div class="bg-white p-8 rounded-xl shadow-lg">
+            <h1 class="text-3xl font-bold text-center text-gray-800">Login</h1>
+            <p class="text-center text-gray-500 mt-2">Acesse sua conta para continuar.</p>
+            <form id="login-form" class="mt-8 space-y-6">
+                <div>
+                    <label for="email" class="sr-only">Email</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4E00] focus:border-[#FF4E00]" placeholder="Seu email">
+                </div>
+                <div>
+                    <label for="password" class="sr-only">Senha</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4E00] focus:border-[#FF4E00]" placeholder="Sua senha">
+                </div>
+                <div id="login-error" class="text-red-500 text-sm text-center hidden"></div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF4E00] hover:bg-[#E64600] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF4E00]">
+                        Entrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal da Aplicação (visível apenas em Desktop e após login) -->
+    <div id="main-app" class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
         <header class="text-center mb-4">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Hill Chart</h1>
             <p class="text-gray-500 mt-2">Adicione funcionalidades e arraste os pontos para indicar o progresso.</p>
@@ -165,7 +189,7 @@
     
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
-    <footer class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
+    <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
         <p>Inspirado no Hill Chart da <a href="https://basecamp.com/features/hill-charts" target="_blank" class="text-[#FF4E00] hover:underline">Basecamp</a>.</p>
     </footer>
 
@@ -184,6 +208,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Elementos Globais e de Login ---
+            const loginPage = document.getElementById('login-page');
+            const mainApp = document.getElementById('main-app');
+            const footer = document.getElementById('footer');
+            const loginForm = document.getElementById('login-form');
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const loginError = document.getElementById('login-error');
+            const mobileWarning = document.getElementById('mobile-warning');
+
             // --- Configurações do Gráfico ---
             const svg = document.getElementById('hill-chart-svg');
             const svgNS = "http://www.w3.org/2000/svg";
@@ -199,7 +233,7 @@
             let isDragging = false;
             let nextPointId = 0;
 
-            // --- Elementos da UI ---
+            // --- Elementos da UI da Aplicação Principal ---
             const addPointBtn = document.getElementById('add-point-btn');
             const newPointInput = document.getElementById('new-point-label');
             const taskList = document.getElementById('task-list');
@@ -610,12 +644,50 @@
                 }
             }
 
-            function init() {
-                // Verifica se está em um dispositivo móvel antes de inicializar o app
-                if (window.innerWidth < 1024) {
-                    return; // Não inicializa o app se a tela for pequena
-                }
+            async function handleLogin(e) {
+                e.preventDefault();
+                const email = emailInput.value;
+                const password = passwordInput.value;
+                const loginButton = e.target.querySelector('button');
 
+                loginError.classList.add('hidden');
+                loginButton.disabled = true;
+                loginButton.textContent = 'Entrando...';
+
+                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N !!!
+                const n8nWebhookUrl = 'https://YOUR_N8N_WEBHOOK_URL/login'; 
+
+                try {
+                    const response = await fetch(n8nWebhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email, password }),
+                    });
+
+                    if (response.ok) {
+                        // Login bem-sucedido
+                        loginPage.classList.add('hidden');
+                        mainApp.classList.remove('hidden');
+                        footer.classList.remove('hidden');
+                        initializeMainApp();
+                    } else {
+                        // Falha no login
+                        loginError.textContent = 'Email ou senha inválidos.';
+                        loginError.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error('Erro ao conectar com o servidor de autenticação:', error);
+                    loginError.textContent = 'Erro de conexão. Tente novamente.';
+                    loginError.classList.remove('hidden');
+                } finally {
+                    loginButton.disabled = false;
+                    loginButton.textContent = 'Entrar';
+                }
+            }
+
+            function initializeMainApp() {
                 drawHill();
                 renderPoints();
                 addPointBtn.addEventListener('click', handleAddPoint);
@@ -645,8 +717,21 @@
                 document.addEventListener('touchmove', (e) => { if (!isDragging) return; e.preventDefault(); const touch = e.touches[0]; onMouseMove(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY })); }, { passive: false });
                 document.addEventListener('touchend', onMouseUp);
             }
+            
+            // --- Inicialização da Página ---
+            function pageLoad() {
+                // Verifica se está em um dispositivo móvel
+                if (window.innerWidth < 1024) {
+                    mobileWarning.classList.remove('hidden');
+                    loginPage.classList.add('hidden');
+                } else {
+                    mobileWarning.classList.add('hidden');
+                    loginPage.classList.remove('hidden');
+                    loginForm.addEventListener('submit', handleLogin);
+                }
+            }
 
-            init();
+            pageLoad();
         });
     </script>
 </body>

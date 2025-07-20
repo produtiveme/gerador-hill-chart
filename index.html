@@ -211,7 +211,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.32</p>
+        <p>Versão 2.0.41</p>
     </footer>
 
     <!-- Modal para Edição de Funcionalidade -->
@@ -345,6 +345,9 @@
                 const pointsGroup = document.createElementNS(svgNS, 'g');
                 pointsGroup.id = 'points-group';
                 svg.appendChild(pointsGroup);
+                const labelsGroup = document.createElementNS(svgNS, 'g');
+                labelsGroup.id = 'labels-group';
+                svg.appendChild(labelsGroup);
             }
 
             function getPositionOnHill(progress) {
@@ -359,39 +362,85 @@
 
             function renderPoints() {
                 const pointsGroup = document.getElementById('points-group');
-                if (!pointsGroup) return;
+                const labelsGroup = document.getElementById('labels-group');
+                if (!pointsGroup || !labelsGroup) return;
                 pointsGroup.innerHTML = '';
+                labelsGroup.innerHTML = '';
                 
-                const labelCounts = new Map();
+                const labelData = [];
+                const labelHeight = 15;
+                const labelWidthApproximation = 80; // Largura média aproximada de um rótulo
 
+                // 1. Calcular posições iniciais
                 points.forEach(point => {
                     const pos = getPositionOnHill(point.progress);
-                    const key = Math.round(pos.x);
-                    const count = labelCounts.get(key) || 0;
-                    const labelYOffset = -15 - (count * 15);
-                    
+                    labelData.push({
+                        id: point.id,
+                        point: point,
+                        x: pos.x,
+                        y: pos.y - 15, // Posição inicial acima do ponto
+                        width: labelWidthApproximation,
+                        height: labelHeight,
+                        pointPos: pos
+                    });
+                });
+
+                // 2. Algoritmo de Repulsão (simplificado) para evitar sobreposição
+                for (let i = 0; i < 5; i++) { // Iterar algumas vezes para estabilizar
+                    for (let a = 0; a < labelData.length; a++) {
+                        for (let b = a + 1; b < labelData.length; b++) {
+                            const labelA = labelData[a];
+                            const labelB = labelData[b];
+
+                            // Verificar sobreposição
+                            const xOverlap = Math.abs(labelA.x - labelB.x) * 2 < (labelA.width + labelB.width);
+                            const yOverlap = Math.abs(labelA.y - labelB.y) * 2 < (labelA.height + labelB.height);
+
+                            if (xOverlap && yOverlap) {
+                                // Se sobrepõem, afasta o label B verticalmente
+                                labelB.y -= labelHeight;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Desenhar pontos, rótulos e linhas guia
+                labelData.forEach(data => {
+                    // Desenhar ponto
                     const pointGroup = document.createElementNS(svgNS, 'g');
-                    pointGroup.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
-                    
+                    pointGroup.setAttribute('transform', `translate(${data.pointPos.x}, ${data.pointPos.y})`);
                     const circle = document.createElementNS(svgNS, 'circle');
                     circle.setAttribute('r', '8');
-                    circle.setAttribute('fill', point.color);
+                    circle.setAttribute('fill', data.point.color);
                     circle.setAttribute('stroke', 'white');
                     circle.setAttribute('stroke-width', '2');
                     circle.setAttribute('class', 'point-circle');
-                    circle.dataset.id = point.id;
-                    
-                    const label = document.createElementNS(svgNS, 'text');
-                    label.setAttribute('class', 'point-label');
-                    label.setAttribute('y', labelYOffset);
-                    label.textContent = point.label;
-                    
+                    circle.dataset.id = data.id;
                     pointGroup.appendChild(circle);
-                    pointGroup.appendChild(label);
                     pointsGroup.appendChild(pointGroup);
 
-                    labelCounts.set(key, count + 1);
+                    // Desenhar rótulo
+                    const label = document.createElementNS(svgNS, 'text');
+                    label.setAttribute('class', 'point-label');
+                    label.setAttribute('x', data.x);
+                    label.setAttribute('y', data.y);
+                    label.textContent = data.point.label;
+                    labelsGroup.appendChild(label);
+
+                    // Desenhar linha guia se o rótulo foi movido
+                    if (Math.abs(data.y - (data.pointPos.y - 15)) > 1) {
+                         const line = document.createElementNS(svgNS, 'line');
+                         line.setAttribute('x1', data.x);
+                         line.setAttribute('y1', data.y + 4);
+                         line.setAttribute('x2', data.pointPos.x);
+                         line.setAttribute('y2', data.pointPos.y - 10); // Conecta um pouco acima do ponto
+                         line.setAttribute('stroke', '#9ca3af');
+                         line.setAttribute('stroke-width', '1');
+                         line.setAttribute('stroke-dasharray', '2 2');
+                         labelsGroup.appendChild(line);
+                    }
                 });
+
                 updateTaskList();
                 updateTotalProgress();
             }

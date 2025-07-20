@@ -181,6 +181,9 @@
                 <button id="add-point-btn" class="w-full sm:w-auto flex-grow bg-[#FF4E00] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#E64600] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF4E00] transition-colors shadow-md">
                     Adicionar Funcionalidade
                 </button>
+                <button id="update-project-btn" class="w-full sm:w-auto bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-md">
+                    Atualizar no Notion
+                </button>
             </div>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
                  <button id="import-json-btn" class="w-full bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors shadow-md">Importar JSON</button>
@@ -201,7 +204,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.65</p>
+        <p>Versão 1.0.62</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -251,6 +254,7 @@
             let selectedPoint = null;
             let isDragging = false;
             let nextPointId = 0;
+            let currentProjectId = null; // Armazena o ID do projeto atual
 
             // --- Elementos da UI da Aplicação Principal ---
             const addPointBtn = document.getElementById('add-point-btn');
@@ -270,6 +274,7 @@
             const closeMermaidModalBtn = document.getElementById('close-mermaid-modal-btn');
             const backToProjectsBtn = document.getElementById('back-to-projects-btn');
             const projectTitleDisplay = document.getElementById('project-title-display');
+            const updateProjectBtn = document.getElementById('update-project-btn');
 
 
             // --- Funções de Desenho e Lógica ---
@@ -725,7 +730,7 @@
                     if (!response.ok) {
                         throw new Error('Não foi possível carregar os projetos.');
                     }
-                    projectsData = await response.json(); // Espera um array: [{ projectName: "...", jsonData: "[...]" }]
+                    projectsData = await response.json(); // Espera um array: [{ projectId: "...", projectName: "...", jsonData: "[...]" }]
 
                     projectListLoader.style.display = 'none';
                     if (projectsData.length === 0) {
@@ -754,6 +759,7 @@
                     const selectedProject = projectsData[projectIndex];
                     
                     if (selectedProject && selectedProject.jsonData) {
+                        currentProjectId = selectedProject.projectId; // Armazena o ID do projeto
                         projectSelectionPage.style.display = 'none';
                         mainApp.style.display = 'block';
                         footer.style.display = 'block';
@@ -772,10 +778,58 @@
                         } catch (error) {
                             alert("Erro ao carregar os dados do projeto. O formato JSON é inválido.");
                             console.error("Erro no parse do JSON do projeto:", error);
-                            // Volta para a tela de seleção se houver erro
                             showProjectSelection();
                         }
                     }
+                }
+            }
+
+            async function handleUpdateProject() {
+                if (!currentProjectId) {
+                    alert("Nenhum projeto selecionado para atualizar.");
+                    return;
+                }
+
+                const originalBtnHTML = updateProjectBtn.innerHTML;
+                updateProjectBtn.disabled = true;
+                updateProjectBtn.innerHTML = 'Atualizando...';
+
+                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para atualizar projetos (DANIEL) !!!
+                const n8nUpdateUrl = 'https://work.produ-cloud.com/webhook-test/hillchartupdateprojeto';
+
+                const updatedJsonData = JSON.stringify(points);
+
+                try {
+                    const response = await fetch(n8nUpdateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            projectId: currentProjectId,
+                            jsonData: updatedJsonData
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Falha ao atualizar o projeto no servidor.');
+                    }
+
+                    const result = await response.json();
+                    if (result.success) {
+                        updateProjectBtn.innerHTML = 'Atualizado!';
+                        setTimeout(() => { updateProjectBtn.innerHTML = originalBtnHTML; }, 2000);
+                    } else {
+                        throw new Error(result.message || 'Ocorreu um erro desconhecido.');
+                    }
+
+                } catch (error) {
+                    console.error('Erro ao atualizar projeto:', error);
+                    alert(`Erro ao atualizar: ${error.message}`);
+                    updateProjectBtn.innerHTML = 'Falhou!';
+                     setTimeout(() => { updateProjectBtn.innerHTML = originalBtnHTML; }, 3000);
+                } finally {
+                    updateProjectBtn.disabled = false;
                 }
             }
             
@@ -783,8 +837,7 @@
                 mainApp.style.display = 'none';
                 footer.style.display = 'none';
                 projectSelectionPage.style.display = 'block';
-                // Opcional: Recarregar a lista de projetos
-                // loadProjects(); 
+                currentProjectId = null; // Limpa o ID do projeto ao voltar
             }
 
             function initializeMainApp() {
@@ -799,6 +852,7 @@
                 importFileInput.addEventListener('change', handleFileSelect);
                 taskList.addEventListener('click', handleDeletePoint);
                 colorPalette.addEventListener('click', handleColorSelect);
+                updateProjectBtn.addEventListener('click', handleUpdateProject);
                 
                 // Modal listeners
                 closeMermaidModalBtn.addEventListener('click', () => mermaidModal.classList.remove('visible'));

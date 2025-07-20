@@ -129,7 +129,10 @@
     
     <!-- Tela de Seleção de Projetos -->
     <div id="project-selection-page" class="w-full max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
-        <h1 class="text-3xl font-bold text-gray-800">Selecione um Projeto</h1>
+        <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-gray-800">Selecione um Projeto</h1>
+            <button id="refresh-projects-btn" class="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">Atualizar Lista</button>
+        </div>
         <div id="project-list-loader" class="mt-4 text-center">Carregando projetos...</div>
         <ul id="project-list" class="mt-6 space-y-3">
             <!-- Projetos serão inseridos aqui dinamicamente -->
@@ -204,7 +207,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.73</p>
+        <p>Versão 2.0.0</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -238,6 +241,7 @@
             // --- Elementos da Seleção de Projetos ---
             const projectList = document.getElementById('project-list');
             const projectListLoader = document.getElementById('project-list-loader');
+            const refreshProjectsBtn = document.getElementById('refresh-projects-btn');
             let projectsData = []; // Armazena os dados dos projetos
 
             // --- Configurações do Gráfico ---

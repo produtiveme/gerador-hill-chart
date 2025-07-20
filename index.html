@@ -204,7 +204,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.62</p>
+        <p>Versão 1.0.72</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -254,7 +254,7 @@
             let selectedPoint = null;
             let isDragging = false;
             let nextPointId = 0;
-            let currentProjectId = null; // Armazena o ID do projeto atual
+            let currentProject = null; // Armazena o objeto do projeto atual
 
             // --- Elementos da UI da Aplicação Principal ---
             const addPointBtn = document.getElementById('add-point-btn');
@@ -759,7 +759,7 @@
                     const selectedProject = projectsData[projectIndex];
                     
                     if (selectedProject && selectedProject.jsonData) {
-                        currentProjectId = selectedProject.projectId; // Armazena o ID do projeto
+                        currentProject = selectedProject; // Armazena o objeto do projeto inteiro
                         projectSelectionPage.style.display = 'none';
                         mainApp.style.display = 'block';
                         footer.style.display = 'block';
@@ -785,7 +785,7 @@
             }
 
             async function handleUpdateProject() {
-                if (!currentProjectId) {
+                if (!currentProject) {
                     alert("Nenhum projeto selecionado para atualizar.");
                     return;
                 }
@@ -794,7 +794,7 @@
                 updateProjectBtn.disabled = true;
                 updateProjectBtn.innerHTML = 'Atualizando...';
 
-                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para atualizar projetos (DANIEL) !!!
+                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para atualizar projetos (Daniel)!!!
                 const n8nUpdateUrl = 'https://work.produ-cloud.com/webhook-test/hillchartupdateprojeto';
 
                 const updatedJsonData = JSON.stringify(points);
@@ -806,7 +806,8 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            projectId: currentProjectId,
+                            // Envia o nome do projeto como identificador
+                            projectName: currentProject.projectName,
                             jsonData: updatedJsonData
                         }),
                     });
@@ -837,7 +838,7 @@
                 mainApp.style.display = 'none';
                 footer.style.display = 'none';
                 projectSelectionPage.style.display = 'block';
-                currentProjectId = null; // Limpa o ID do projeto ao voltar
+                currentProject = null; // Limpa o projeto atual ao voltar
             }
 
             function initializeMainApp() {

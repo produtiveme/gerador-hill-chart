@@ -156,7 +156,7 @@
         <!-- Progresso Total do Projeto -->
         <div class="mb-6 px-1">
             <div class="flex justify-between items-center mb-1">
-                <h3 class="text-md font-semibold text-[#6B9E83]">Progresso Total do Projeto</h3>
+                <h3 class="text-md font-semibold text-[#6B9E83]">Progresso Total do Projeto (Ponderado)</h3>
                 <span id="total-progress-text" class="text-md font-bold text-[#FF4E00]">0%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -178,6 +178,12 @@
         <div class="space-y-4">
             <div class="flex flex-col sm:flex-row gap-3">
                 <input type="text" id="new-point-label" class="flex-grow w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4E00] focus:border-[#FF4E00] transition" placeholder="Nome da nova funcionalidade...">
+                <select id="new-point-complexity" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4E00] focus:border-[#FF4E00]">
+                    <option value="1">Baixo</option>
+                    <option value="3" selected>Médio</option>
+                    <option value="5">Alto</option>
+                    <option value="7">Muito Alto</option>
+                </select>
                 <div id="color-palette" class="flex items-center justify-center gap-2 p-2 bg-gray-100 rounded-lg">
                     <div class="color-option selected" style="background-color: #FF4E00;" data-color="#FF4E00"></div>
                     <div class="color-option" style="background-color: #FFC280;" data-color="#FFC280"></div>
@@ -211,7 +217,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.45</p>
+        <p>Versão 2.1.0</p>
     </footer>
 
     <!-- Modal para Edição de Funcionalidade -->
@@ -224,6 +230,15 @@
                     <div>
                         <label for="edit-point-label" class="block text-sm font-medium text-gray-700">Nome da Funcionalidade</label>
                         <input type="text" id="edit-point-label" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#FF4E00] focus:border-[#FF4E00]">
+                    </div>
+                     <div>
+                        <label for="edit-point-complexity" class="block text-sm font-medium text-gray-700">Complexidade</label>
+                        <select id="edit-point-complexity" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#FF4E00] focus:border-[#FF4E00]">
+                            <option value="1">Baixo</option>
+                            <option value="3">Médio</option>
+                            <option value="5">Alto</option>
+                            <option value="7">Muito Alto</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Cor</label>
@@ -284,6 +299,7 @@
             // --- Elementos da UI da Aplicação Principal ---
             const addPointBtn = document.getElementById('add-point-btn');
             const newPointInput = document.getElementById('new-point-label');
+            const newPointComplexity = document.getElementById('new-point-complexity');
             const taskList = document.getElementById('task-list');
             const exportPngBtn = document.getElementById('export-png-btn');
             const exportJsonBtn = document.getElementById('export-json-btn');
@@ -303,6 +319,7 @@
             const editPointLabelInput = document.getElementById('edit-point-label');
             const editPointProgressInput = document.getElementById('edit-point-progress');
             const editColorPalette = document.getElementById('edit-color-palette');
+            const editPointComplexity = document.getElementById('edit-point-complexity');
             const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
 
 
@@ -445,6 +462,17 @@
                 updateTotalProgress();
             }
             
+            function getComplexityTextAndColor(complexityValue) {
+                const value = parseInt(complexityValue, 10);
+                switch (value) {
+                    case 1: return { text: 'Baixo', color: 'bg-green-100 text-green-800' };
+                    case 3: return { text: 'Médio', color: 'bg-yellow-100 text-yellow-800' };
+                    case 5: return { text: 'Alto', color: 'bg-orange-100 text-orange-800' };
+                    case 7: return { text: 'Muito Alto', color: 'bg-red-100 text-red-800' };
+                    default: return { text: 'N/D', color: 'bg-gray-100 text-gray-800' };
+                }
+            }
+
             function updateTaskList() {
                 if (!taskList) return;
                 taskList.innerHTML = '';
@@ -470,9 +498,15 @@
                         const textSpan = document.createElement('span');
                         textSpan.textContent = `${point.label} (${point.progress.toFixed(0)}%)`;
                         textSpan.className = 'flex-grow mr-2';
+
+                        const complexityInfo = getComplexityTextAndColor(point.complexity);
+                        const complexityBadge = document.createElement('span');
+                        complexityBadge.textContent = complexityInfo.text;
+                        complexityBadge.className = `text-xs font-semibold px-2 py-0.5 rounded-full ${complexityInfo.color}`;
                         
                         leftSide.appendChild(colorDot);
                         leftSide.appendChild(textSpan);
+                        leftSide.appendChild(complexityBadge);
 
                         const rightSide = document.createElement('div');
                         rightSide.className = 'flex items-center space-x-3';
@@ -527,22 +561,34 @@
                     totalProgressBar.style.width = '0%';
                     return;
                 }
-                const total = points.reduce((sum, point) => sum + point.progress, 0);
-                const average = total / points.length;
+
+                let totalComplexityPoints = 0;
+                let completedComplexityPoints = 0;
+
+                points.forEach(point => {
+                    const complexity = point.complexity || 1; // Default para 1 se não definido
+                    totalComplexityPoints += complexity;
+                    completedComplexityPoints += (point.progress / 100) * complexity;
+                });
+
+                const weightedAverage = totalComplexityPoints > 0 ? (completedComplexityPoints / totalComplexityPoints) * 100 : 0;
                 
-                totalProgressText.textContent = `${average.toFixed(0)}%`;
-                totalProgressBar.style.width = `${average}%`;
+                totalProgressText.textContent = `${weightedAverage.toFixed(0)}%`;
+                totalProgressBar.style.width = `${weightedAverage}%`;
             }
 
             function handleAddPoint() {
                 const label = newPointInput.value.trim();
                 const selectedColor = colorPalette.querySelector('.selected').dataset.color;
+                const complexity = parseInt(newPointComplexity.value, 10);
+
                 if (label && selectedColor) {
                     points.push({
                         id: nextPointId++,
                         label: label,
                         progress: 5,
-                        color: selectedColor
+                        color: selectedColor,
+                        complexity: complexity
                     });
                     newPointInput.value = '';
                     renderPoints();
@@ -622,9 +668,12 @@
                     let currentY = chartAreaHeight;
 
                     // Adicionar Barra de Progresso Total
-                    const average = points.length > 0 ? points.reduce((sum, p) => sum + p.progress, 0) / points.length : 0;
-                    exportSvg.appendChild(createText('Progresso Total do Projeto', 40, currentY, 'start', '600', '16px', '#6B9E83', 'Bricolage Grotesque, sans-serif'));
-                    exportSvg.appendChild(createText(`${average.toFixed(0)}%`, exportWidth - 40, currentY, 'end', 'bold', '16px', '#FF4E00'));
+                    const totalComplexityPoints = points.reduce((sum, p) => sum + (p.complexity || 1), 0);
+                    const completedComplexityPoints = points.reduce((sum, p) => sum + (p.progress / 100) * (p.complexity || 1), 0);
+                    const weightedAverage = totalComplexityPoints > 0 ? (completedComplexityPoints / totalComplexityPoints) * 100 : 0;
+
+                    exportSvg.appendChild(createText('Progresso Total do Projeto (Ponderado)', 40, currentY, 'start', '600', '16px', '#6B9E83', 'Bricolage Grotesque, sans-serif'));
+                    exportSvg.appendChild(createText(`${weightedAverage.toFixed(0)}%`, exportWidth - 40, currentY, 'end', 'bold', '16px', '#FF4E00'));
                     currentY += 20;
                     const progressBarBg = document.createElementNS(svgNS, 'rect');
                     progressBarBg.setAttribute('x', 40);
@@ -637,7 +686,7 @@
                     const progressBarFg = document.createElementNS(svgNS, 'rect');
                     progressBarFg.setAttribute('x', 40);
                     progressBarFg.setAttribute('y', currentY);
-                    progressBarFg.setAttribute('width', (exportWidth - 80) * (average / 100));
+                    progressBarFg.setAttribute('width', (exportWidth - 80) * (weightedAverage / 100));
                     progressBarFg.setAttribute('height', 10);
                     progressBarFg.setAttribute('fill', '#FF4E00');
                     progressBarFg.setAttribute('rx', 5);
@@ -657,7 +706,9 @@
                             colorDot.setAttribute('r', 5);
                             colorDot.setAttribute('fill', point.color);
                             exportSvg.appendChild(colorDot);
-                            exportSvg.appendChild(createText(`${point.label} (${point.progress.toFixed(0)}%)`, 65, currentY, 'start'));
+                            const complexityInfo = getComplexityTextAndColor(point.complexity);
+                            const fullText = `${point.label} (${point.progress.toFixed(0)}%) - ${complexityInfo.text}`;
+                            exportSvg.appendChild(createText(fullText, 65, currentY, 'start'));
                             currentY += listItemHeight;
                         });
                     }
@@ -726,8 +777,8 @@
                 reader.onload = (event) => {
                     try {
                         const importedData = JSON.parse(event.target.result);
-                        // Validação simples
                         if (Array.isArray(importedData) && (importedData.length === 0 || (importedData[0].id !== undefined && importedData[0].label && importedData[0].progress !== undefined))) {
+                            importedData.forEach(p => { if (p.complexity === undefined) p.complexity = 3; });
                             points = importedData;
                             nextPointId = points.length > 0 ? Math.max(...points.map(p => p.id)) + 1 : 0;
                             renderPoints();
@@ -740,7 +791,7 @@
                     }
                 };
                 reader.readAsText(file);
-                e.target.value = null; // Permite re-importar o mesmo arquivo
+                e.target.value = null;
             }
 
 
@@ -785,31 +836,23 @@
                 loginButton.disabled = true;
                 loginButton.textContent = 'Entrando...';
 
-                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N !!!
                 const n8nWebhookUrl = 'https://work.produ-cloud.com/webhook/hillchartlogin'; 
 
                 try {
                     const response = await fetch(n8nWebhookUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password }),
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Falha na autenticação ou erro no servidor.');
-                    }
-
+                    if (!response.ok) throw new Error('Falha na autenticação ou erro no servidor.');
                     const data = await response.json();
 
                     if (data.success === true) {
-                        // Login bem-sucedido
                         loginPage.style.display = 'none';
                         projectSelectionPage.style.display = 'block';
                         await loadProjects();
                     } else {
-                        // Falha no login
                         loginError.textContent = data.message || 'Email ou senha inválidos.';
                         loginError.classList.remove('hidden');
                     }
@@ -824,7 +867,6 @@
             }
 
             async function loadProjects() {
-                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para buscar projetos !!!
                 const n8nProjectsUrl = 'https://work.produ-cloud.com/webhook/hillchartcarregaprojeto';
                 
                 projectList.innerHTML = '';
@@ -832,10 +874,8 @@
 
                 try {
                     const response = await fetch(n8nProjectsUrl);
-                    if (!response.ok) {
-                        throw new Error('Não foi possível carregar os projetos.');
-                    }
-                    projectsData = await response.json(); // Espera um array: [{ projectId: "...", projectName: "...", jsonData: "[...]" }]
+                    if (!response.ok) throw new Error('Não foi possível carregar os projetos.');
+                    projectsData = await response.json();
 
                     projectListLoader.style.display = 'none';
                     if (projectsData.length === 0) {
@@ -847,7 +887,7 @@
                         const li = document.createElement('li');
                         li.className = 'p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors';
                         li.textContent = project.projectName;
-                        li.dataset.index = index; // Usa o índice para encontrar os dados no array
+                        li.dataset.index = index;
                         projectList.appendChild(li);
                     });
 
@@ -864,7 +904,7 @@
                     const selectedProject = projectsData[projectIndex];
                     
                     if (selectedProject && selectedProject.jsonData) {
-                        currentProject = selectedProject; // Armazena o objeto do projeto inteiro
+                        currentProject = selectedProject;
                         projectSelectionPage.style.display = 'none';
                         mainApp.style.display = 'block';
                         footer.style.display = 'block';
@@ -874,6 +914,7 @@
                         try {
                             const importedData = JSON.parse(selectedProject.jsonData);
                             if (Array.isArray(importedData)) {
+                                importedData.forEach(p => { if (p.complexity === undefined) p.complexity = 3; });
                                 points = importedData;
                                 nextPointId = points.length > 0 ? Math.max(...points.map(p => p.id)) + 1 : 0;
                                 renderPoints();
@@ -899,30 +940,23 @@
                 updateProjectBtn.disabled = true;
                 updateProjectBtn.innerHTML = 'Atualizando...';
 
-                // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para atualizar projetos (Daniel)!!!
                 const n8nUpdateUrl = 'https://work.produ-cloud.com/webhook/hillchartupdateprojeto';
-
                 const updatedJsonData = JSON.stringify(points);
 
                 try {
                     const response = await fetch(n8nUpdateUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            // Envia o nome do projeto como identificador
                             projectName: currentProject.projectName,
                             jsonData: updatedJsonData
                         }),
                     });
 
-                    // CORREÇÃO 1: Trata qualquer resposta OK (status 200-299) como sucesso
                     if (response.ok) {
                         updateProjectBtn.innerHTML = 'Atualizado!';
                         setTimeout(() => { updateProjectBtn.innerHTML = 'Atualizar no Notion'; }, 2000);
                     } else {
-                        // Tenta ler a mensagem de erro do N8N, se houver
                         const errorData = await response.json().catch(() => null);
                         throw new Error(errorData?.message || 'Falha ao atualizar o projeto no servidor.');
                     }
@@ -941,16 +975,16 @@
                 mainApp.style.display = 'none';
                 footer.style.display = 'none';
                 projectSelectionPage.style.display = 'block';
-                currentProject = null; // Limpa o projeto atual ao voltar
-                loadProjects(); // CORREÇÃO 2: Recarrega os projetos ao voltar
+                currentProject = null;
+                loadProjects();
             }
 
             function openEditModal(point) {
                 editPointIdInput.value = point.id;
                 editPointLabelInput.value = point.label;
                 editPointProgressInput.value = point.progress.toFixed(0);
+                editPointComplexity.value = point.complexity || 3;
                 
-                // Popula a paleta de cores do modal
                 editColorPalette.innerHTML = '';
                 const colors = ['#FF4E00', '#FFC280', '#1D1C1B', '#6B9E83'];
                 colors.forEach(color => {
@@ -976,6 +1010,7 @@
                 const newLabel = editPointLabelInput.value.trim();
                 const newProgress = parseFloat(editPointProgressInput.value);
                 const newColor = editColorPalette.querySelector('.selected').dataset.color;
+                const newComplexity = parseInt(editPointComplexity.value, 10);
 
                 if (newLabel === '') {
                     alert('O nome da funcionalidade não pode ser vazio.');
@@ -989,6 +1024,7 @@
                 point.label = newLabel;
                 point.progress = newProgress;
                 point.color = newColor;
+                point.complexity = newComplexity;
 
                 renderPoints();
                 editModal.classList.remove('visible');
@@ -1007,24 +1043,17 @@
                 colorPalette.addEventListener('click', handleColorSelect);
                 updateProjectBtn.addEventListener('click', handleUpdateProject);
                 
-                // Listeners do Modal de Edição
                 editForm.addEventListener('submit', handleSaveEdit);
                 closeEditModalBtn.addEventListener('click', () => editModal.classList.remove('visible'));
                 editColorPalette.addEventListener('click', handleColorSelect);
-
 
                 svg.addEventListener('mousedown', onMouseDown);
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
                 svg.addEventListener('mouseleave', onMouseLeave);
-                svg.addEventListener('touchstart', (e) => { const touch = e.touches[0]; onMouseDown(new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY, target: touch.target })); }, { passive: true });
-                document.addEventListener('touchmove', (e) => { if (!isDragging) return; e.preventDefault(); const touch = e.touches[0]; onMouseMove(new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY })); }, { passive: false });
-                document.addEventListener('touchend', onMouseUp);
             }
             
-            // --- Inicialização da Página ---
             function pageLoad() {
-                // Verifica se está em um dispositivo móvel
                 if (window.innerWidth < 1024) {
                     mobileWarning.classList.remove('hidden');
                     loginPage.style.display = 'none';
@@ -1034,8 +1063,8 @@
                     loginForm.addEventListener('submit', handleLogin);
                     projectList.addEventListener('click', handleProjectSelection);
                     backToProjectsBtn.addEventListener('click', showProjectSelection);
-                    refreshProjectsBtn.addEventListener('click', loadProjects); // CORREÇÃO 2: Adiciona o listener para o botão de atualizar
-                    initializeMainApp(); // Inicializa os listeners da app principal uma vez
+                    refreshProjectsBtn.addEventListener('click', loadProjects);
+                    initializeMainApp();
                 }
             }
 

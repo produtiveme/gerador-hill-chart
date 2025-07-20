@@ -41,6 +41,7 @@
             margin-left: 8px;
             display: inline-block;
             transition: transform 0.2s, color 0.2s;
+            font-size: 1.1rem;
         }
         .task-action-btn:hover {
             transform: scale(1.2);
@@ -50,21 +51,49 @@
             color: #ef4444;
         }
         .color-option {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             cursor: pointer;
             border: 3px solid transparent;
             transition: border-color 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .color-option.selected {
-            border-color: #a7a7a7;
+            border-color: #4f46e5;
         }
-        .task-list-input {
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            padding: 2px 6px;
-            outline-color: #FF4E00;
+        /* Estilos do Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: scale(0.95);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
         }
     </style>
 </head>
@@ -117,7 +146,7 @@
 
 
     <!-- Conteúdo Principal da Aplicação (visível apenas em Desktop e após login) -->
-    <div id="main-app" class="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
+    <div id="main-app" class="w-full mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden" style="max-width: 1200px;">
         <header class="text-center mb-4 relative">
              <button id="back-to-projects-btn" class="absolute top-0 left-0 bg-gray-200 text-gray-700 font-semibold px-3 py-1 rounded-lg hover:bg-gray-300 transition-colors">&larr; Voltar</button>
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Hill Chart</h1>
@@ -182,8 +211,38 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.22</p>
+        <p>Versão 2.0.25</p>
     </footer>
+
+    <!-- Modal para Edição de Funcionalidade -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Editar Funcionalidade</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-point-id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="edit-point-label" class="block text-sm font-medium text-gray-700">Nome da Funcionalidade</label>
+                        <input type="text" id="edit-point-label" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#FF4E00] focus:border-[#FF4E00]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Cor</label>
+                        <div id="edit-color-palette" class="mt-2 flex items-center justify-start gap-3">
+                            <!-- Opções de cores serão inseridas aqui -->
+                        </div>
+                    </div>
+                    <div>
+                        <label for="edit-point-progress" class="block text-sm font-medium text-gray-700">Progresso (%)</label>
+                        <input type="number" id="edit-point-progress" min="0" max="100" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#FF4E00] focus:border-[#FF4E00]">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="close-edit-modal-btn" class="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300 transition-colors">Cancelar</button>
+                    <button type="submit" id="save-edit-btn" class="bg-[#FF4E00] text-white font-semibold px-5 py-2 rounded-lg hover:bg-[#E64600] transition-colors">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -236,6 +295,15 @@
             const backToProjectsBtn = document.getElementById('back-to-projects-btn');
             const projectTitleDisplay = document.getElementById('project-title-display');
             const updateProjectBtn = document.getElementById('update-project-btn');
+
+            // --- Elementos do Modal de Edição ---
+            const editModal = document.getElementById('edit-modal');
+            const editForm = document.getElementById('edit-form');
+            const editPointIdInput = document.getElementById('edit-point-id');
+            const editPointLabelInput = document.getElementById('edit-point-label');
+            const editPointProgressInput = document.getElementById('edit-point-progress');
+            const editColorPalette = document.getElementById('edit-color-palette');
+            const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
 
 
             // --- Funções de Desenho e Lógica ---
@@ -335,27 +403,26 @@
                         colorDot.style.backgroundColor = point.color;
 
                         const textSpan = document.createElement('span');
-                        textSpan.textContent = point.label;
-                        textSpan.className = 'flex-grow mr-2 cursor-pointer hover:text-blue-600';
-                        textSpan.dataset.action = 'edit-label';
-
-                        const progressSpan = document.createElement('span');
-                        progressSpan.textContent = `(${point.progress.toFixed(0)}%)`;
-                        progressSpan.className = 'w-16 text-right mr-2 cursor-pointer hover:text-blue-600';
-                        progressSpan.dataset.action = 'edit-progress';
+                        textSpan.textContent = `${point.label} (${point.progress.toFixed(0)}%)`;
+                        textSpan.className = 'flex-grow mr-2';
                         
                         leftSide.appendChild(colorDot);
                         leftSide.appendChild(textSpan);
-                        leftSide.appendChild(progressSpan);
 
                         const rightSide = document.createElement('div');
-                        rightSide.className = 'flex items-center';
+                        rightSide.className = 'flex items-center space-x-3';
+
+                        const editBtn = document.createElement('span');
+                        editBtn.className = 'task-action-btn';
+                        editBtn.innerHTML = '&#9998;'; // Lápis
+                        editBtn.dataset.action = 'edit';
 
                         const deleteBtn = document.createElement('span');
                         deleteBtn.className = 'task-action-btn delete-btn';
                         deleteBtn.innerHTML = '&#128465;'; // Lixeira
                         deleteBtn.dataset.action = 'delete';
                         
+                        rightSide.appendChild(editBtn);
                         rightSide.appendChild(deleteBtn);
 
                         li.appendChild(leftSide);
@@ -366,10 +433,10 @@
             }
             
             function handleTaskListClick(e) {
-                const target = e.target;
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+                
                 const action = target.dataset.action;
-                if (!action) return;
-
                 const li = target.closest('li');
                 const pointId = parseInt(li.dataset.id, 10);
                 const point = points.find(p => p.id === pointId);
@@ -382,24 +449,8 @@
                             renderPoints();
                         }
                         break;
-                    case 'edit-label':
-                        const newLabel = prompt("Renomear funcionalidade:", point.label);
-                        if (newLabel !== null && newLabel.trim() !== '') {
-                            point.label = newLabel.trim();
-                            renderPoints();
-                        }
-                        break;
-                    case 'edit-progress':
-                        const newProgressStr = prompt("Atualizar progresso (%):", point.progress.toFixed(0));
-                        if (newProgressStr !== null) {
-                            const newProgress = parseFloat(newProgressStr);
-                            if (!isNaN(newProgress) && newProgress >= 0 && newProgress <= 100) {
-                                point.progress = newProgress;
-                                renderPoints();
-                            } else {
-                                alert("Por favor, insira um número válido entre 0 e 100.");
-                            }
-                        }
+                    case 'edit':
+                        openEditModal(point);
                         break;
                 }
             }
@@ -650,9 +701,11 @@
             function onMouseLeave() { if (isDragging) { onMouseUp(); } }
             
             function handleColorSelect(e) {
-                if(e.target.classList.contains('color-option')) {
-                    colorPalette.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
-                    e.target.classList.add('selected');
+                const target = e.target.closest('.color-option');
+                if(target) {
+                    const palette = target.parentElement;
+                    palette.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                    target.classList.add('selected');
                 }
             }
 
@@ -826,28 +879,73 @@
                 loadProjects(); // CORREÇÃO 2: Recarrega os projetos ao voltar
             }
 
+            function openEditModal(point) {
+                editPointIdInput.value = point.id;
+                editPointLabelInput.value = point.label;
+                editPointProgressInput.value = point.progress.toFixed(0);
+                
+                // Popula a paleta de cores do modal
+                editColorPalette.innerHTML = '';
+                const colors = ['#FF4E00', '#FFC280', '#1D1C1B', '#6B9E83'];
+                colors.forEach(color => {
+                    const colorDiv = document.createElement('div');
+                    colorDiv.className = 'color-option';
+                    colorDiv.style.backgroundColor = color;
+                    colorDiv.dataset.color = color;
+                    if (color === point.color) {
+                        colorDiv.classList.add('selected');
+                    }
+                    editColorPalette.appendChild(colorDiv);
+                });
+
+                editModal.classList.add('visible');
+            }
+
+            function handleSaveEdit(e) {
+                e.preventDefault();
+                const pointId = parseInt(editPointIdInput.value, 10);
+                const point = points.find(p => p.id === pointId);
+                if (!point) return;
+
+                const newLabel = editPointLabelInput.value.trim();
+                const newProgress = parseFloat(editPointProgressInput.value);
+                const newColor = editColorPalette.querySelector('.selected').dataset.color;
+
+                if (newLabel === '') {
+                    alert('O nome da funcionalidade não pode ser vazio.');
+                    return;
+                }
+                if (isNaN(newProgress) || newProgress < 0 || newProgress > 100) {
+                    alert('O progresso deve ser um número entre 0 e 100.');
+                    return;
+                }
+
+                point.label = newLabel;
+                point.progress = newProgress;
+                point.color = newColor;
+
+                renderPoints();
+                editModal.classList.remove('visible');
+            }
+
             function initializeMainApp() {
                 drawHill();
                 renderPoints();
                 addPointBtn.addEventListener('click', handleAddPoint);
                 newPointInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { handleAddPoint(); } });
                 exportPngBtn.addEventListener('click', handleExportPng);
-                exportMermaidBtn.addEventListener('click', handleExportToMermaid);
                 exportJsonBtn.addEventListener('click', handleExportJson);
                 importJsonBtn.addEventListener('click', handleImportJson);
                 importFileInput.addEventListener('change', handleFileSelect);
-                taskList.addEventListener('click', handleDeletePoint);
+                taskList.addEventListener('click', handleTaskListClick);
                 colorPalette.addEventListener('click', handleColorSelect);
                 updateProjectBtn.addEventListener('click', handleUpdateProject);
                 
-                // Modal listeners
-                closeMermaidModalBtn.addEventListener('click', () => mermaidModal.classList.remove('visible'));
-                copyMermaidBtn.addEventListener('click', () => {
-                    mermaidCodeTextarea.select();
-                    document.execCommand('copy');
-                    copyMermaidBtn.textContent = 'Copiado!';
-                    setTimeout(() => { copyMermaidBtn.textContent = 'Copiar'; }, 2000);
-                });
+                // Listeners do Modal de Edição
+                editForm.addEventListener('submit', handleSaveEdit);
+                closeEditModalBtn.addEventListener('click', () => editModal.classList.remove('visible'));
+                editColorPalette.addEventListener('click', handleColorSelect);
+
 
                 svg.addEventListener('mousedown', onMouseDown);
                 document.addEventListener('mousemove', onMouseMove);

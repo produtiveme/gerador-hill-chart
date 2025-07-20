@@ -204,7 +204,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 1.0.72</p>
+        <p>Versão 1.0.73</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -795,7 +795,7 @@
                 updateProjectBtn.innerHTML = 'Atualizando...';
 
                 // !!! IMPORTANTE: Substitua esta URL pelo seu webhook do N8N para atualizar projetos (Daniel)!!!
-                const n8nUpdateUrl = 'https://work.produ-cloud.com/webhook-test/hillchartupdateprojeto';
+                const n8nUpdateUrl = 'https://work.produ-cloud.com/webhook/hillchartupdateprojeto';
 
                 const updatedJsonData = JSON.stringify(points);
 

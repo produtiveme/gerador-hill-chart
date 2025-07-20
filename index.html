@@ -35,16 +35,19 @@
         .point-circle:active {
             cursor: grabbing;
         }
-        .delete-btn {
+        .task-action-btn {
             cursor: pointer;
-            color: #ef4444;
-            font-weight: bold;
+            color: #9ca3af;
             margin-left: 8px;
             display: inline-block;
-            transition: transform 0.2s;
+            transition: transform 0.2s, color 0.2s;
+        }
+        .task-action-btn:hover {
+            transform: scale(1.2);
+            color: #1f2937;
         }
         .delete-btn:hover {
-            transform: scale(1.2);
+            color: #ef4444;
         }
         .color-option {
             width: 24px;
@@ -57,38 +60,11 @@
         .color-option.selected {
             border-color: #a7a7a7;
         }
-        /* Estilos do Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-        .modal-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            transform: scale(0.95);
-            transition: transform 0.3s;
-        }
-        .modal-overlay.visible .modal-content {
-            transform: scale(1);
+        .task-list-input {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 2px 6px;
+            outline-color: #FF4E00;
         }
     </style>
 </head>
@@ -141,7 +117,7 @@
 
 
     <!-- Conteúdo Principal da Aplicação (visível apenas em Desktop e após login) -->
-    <div id="main-app" class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
+    <div id="main-app" class="w-full max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
         <header class="text-center mb-4 relative">
              <button id="back-to-projects-btn" class="absolute top-0 left-0 bg-gray-200 text-gray-700 font-semibold px-3 py-1 rounded-lg hover:bg-gray-300 transition-colors">&larr; Voltar</button>
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Hill Chart</h1>
@@ -188,11 +164,10 @@
                     Atualizar no Notion
                 </button>
             </div>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                  <button id="import-json-btn" class="w-full bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors shadow-md">Importar JSON</button>
                  <button id="export-json-btn" class="w-full bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors shadow-md">Exportar JSON</button>
                  <button id="export-png-btn" class="w-full bg-[#6B9E83] text-white font-semibold px-4 py-2 rounded-lg hover:bg-[#5A8670] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#6B9E83] transition-colors shadow-md">Exportar PNG</button>
-                 <button id="export-mermaid-btn" class="w-full bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-700 transition-colors shadow-md">Exportar Mermaid</button>
             </div>
         </div>
         
@@ -207,21 +182,8 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.12</p>
+        <p>Versão 2.0.22</p>
     </footer>
-
-    <!-- Modal para Exportação Mermaid -->
-    <div id="mermaid-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Código Mermaid Gerado</h2>
-            <p class="text-gray-600 mb-4">Copie o código abaixo e cole em qualquer editor que suporte Mermaid.js.</p>
-            <textarea id="mermaid-code" readonly class="w-full h-48 p-2 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"></textarea>
-            <div class="mt-6 flex justify-end gap-3">
-                <button id="copy-mermaid-btn" class="bg-[#FF4E00] text-white font-semibold px-5 py-2 rounded-lg hover:bg-[#E64600] transition-colors">Copiar</button>
-                <button id="close-mermaid-modal-btn" class="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300 transition-colors">Fechar</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -265,17 +227,12 @@
             const newPointInput = document.getElementById('new-point-label');
             const taskList = document.getElementById('task-list');
             const exportPngBtn = document.getElementById('export-png-btn');
-            const exportMermaidBtn = document.getElementById('export-mermaid-btn');
             const exportJsonBtn = document.getElementById('export-json-btn');
             const importJsonBtn = document.getElementById('import-json-btn');
             const importFileInput = document.getElementById('import-file-input');
             const colorPalette = document.getElementById('color-palette');
             const totalProgressBar = document.getElementById('total-progress-bar');
             const totalProgressText = document.getElementById('total-progress-text');
-            const mermaidModal = document.getElementById('mermaid-modal');
-            const mermaidCodeTextarea = document.getElementById('mermaid-code');
-            const copyMermaidBtn = document.getElementById('copy-mermaid-btn');
-            const closeMermaidModalBtn = document.getElementById('close-mermaid-modal-btn');
             const backToProjectsBtn = document.getElementById('back-to-projects-btn');
             const projectTitleDisplay = document.getElementById('project-title-display');
             const updateProjectBtn = document.getElementById('update-project-btn');
@@ -367,24 +324,83 @@
                 } else {
                     points.forEach(point => {
                         const li = document.createElement('li');
-                        li.className = 'flex items-center justify-between p-1 rounded-md hover:bg-gray-50';
+                        li.className = 'flex items-center justify-between p-2 rounded-md hover:bg-gray-50';
+                        li.dataset.id = point.id;
+
                         const leftSide = document.createElement('div');
-                        leftSide.className = 'flex items-center';
+                        leftSide.className = 'flex items-center flex-grow';
+                        
                         const colorDot = document.createElement('span');
-                        colorDot.className = 'w-3 h-3 rounded-full mr-3';
+                        colorDot.className = 'w-3 h-3 rounded-full mr-3 flex-shrink-0';
                         colorDot.style.backgroundColor = point.color;
-                        const text = document.createElement('span');
-                        text.textContent = `${point.label} (${point.progress.toFixed(0)}%)`;
+
+                        const textSpan = document.createElement('span');
+                        textSpan.textContent = point.label;
+                        textSpan.className = 'flex-grow mr-2 cursor-pointer hover:text-blue-600';
+                        textSpan.dataset.action = 'edit-label';
+
+                        const progressSpan = document.createElement('span');
+                        progressSpan.textContent = `(${point.progress.toFixed(0)}%)`;
+                        progressSpan.className = 'w-16 text-right mr-2 cursor-pointer hover:text-blue-600';
+                        progressSpan.dataset.action = 'edit-progress';
+                        
                         leftSide.appendChild(colorDot);
-                        leftSide.appendChild(text);
+                        leftSide.appendChild(textSpan);
+                        leftSide.appendChild(progressSpan);
+
+                        const rightSide = document.createElement('div');
+                        rightSide.className = 'flex items-center';
+
                         const deleteBtn = document.createElement('span');
-                        deleteBtn.className = 'delete-btn';
-                        deleteBtn.innerHTML = '&times;';
-                        deleteBtn.dataset.id = point.id;
+                        deleteBtn.className = 'task-action-btn delete-btn';
+                        deleteBtn.innerHTML = '&#128465;'; // Lixeira
+                        deleteBtn.dataset.action = 'delete';
+                        
+                        rightSide.appendChild(deleteBtn);
+
                         li.appendChild(leftSide);
-                        li.appendChild(deleteBtn);
+                        li.appendChild(rightSide);
                         taskList.appendChild(li);
                     });
+                }
+            }
+            
+            function handleTaskListClick(e) {
+                const target = e.target;
+                const action = target.dataset.action;
+                if (!action) return;
+
+                const li = target.closest('li');
+                const pointId = parseInt(li.dataset.id, 10);
+                const point = points.find(p => p.id === pointId);
+                if (!point) return;
+
+                switch (action) {
+                    case 'delete':
+                        if (confirm(`Tem certeza que deseja excluir a funcionalidade "${point.label}"?`)) {
+                            points = points.filter(p => p.id !== pointId);
+                            renderPoints();
+                        }
+                        break;
+                    case 'edit-label':
+                        const newLabel = prompt("Renomear funcionalidade:", point.label);
+                        if (newLabel !== null && newLabel.trim() !== '') {
+                            point.label = newLabel.trim();
+                            renderPoints();
+                        }
+                        break;
+                    case 'edit-progress':
+                        const newProgressStr = prompt("Atualizar progresso (%):", point.progress.toFixed(0));
+                        if (newProgressStr !== null) {
+                            const newProgress = parseFloat(newProgressStr);
+                            if (!isNaN(newProgress) && newProgress >= 0 && newProgress <= 100) {
+                                point.progress = newProgress;
+                                renderPoints();
+                            } else {
+                                alert("Por favor, insira um número válido entre 0 e 100.");
+                            }
+                        }
+                        break;
                 }
             }
             
@@ -417,14 +433,6 @@
                 } else {
                     newPointInput.classList.add('border-red-500');
                     setTimeout(() => newPointInput.classList.remove('border-red-500'), 1000);
-                }
-            }
-
-            function handleDeletePoint(e) {
-                if (e.target.classList.contains('delete-btn')) {
-                    const idToDelete = parseInt(e.target.dataset.id, 10);
-                    points = points.filter(p => p.id !== idToDelete);
-                    renderPoints();
                 }
             }
             
@@ -570,32 +578,6 @@
                     exportPngBtn.disabled = false;
                     exportPngBtn.innerHTML = `Exportar PNG`;
                 }
-            }
-
-            function handleExportToMermaid() {
-                if (points.length === 0) {
-                    alert("Adicione pelo menos uma funcionalidade para exportar para Mermaid.");
-                    return;
-                }
-
-                let mermaidString = 'quadrantChart\n';
-                mermaidString += '  title Hill Chart - www.produtive.me\n';
-                mermaidString += '  x-axis Descobrindo --> Executando\n';
-                mermaidString += '  y-axis Incerteza --> Certeza\n';
-                mermaidString += '  quadrant-1 "Downhill"\n';
-                mermaidString += '  quadrant-2 "Topo da Colina"\n';
-                mermaidString += '  quadrant-3 "Uphill"\n';
-                mermaidString += '  quadrant-4 "Downhill (Início)"\n';
-
-                points.forEach(point => {
-                    const progress = point.progress;
-                    const x = progress / 100;
-                    const y = (progress <= 50) ? (progress / 50) : ((100 - progress) / 50);
-                    mermaidString += `  "${point.label}": [${x.toFixed(2)}, ${y.toFixed(2)}]\n`;
-                });
-
-                mermaidCodeTextarea.value = mermaidString;
-                mermaidModal.classList.add('visible');
             }
             
             function handleExportJson() {
@@ -819,7 +801,7 @@
                     // CORREÇÃO 1: Trata qualquer resposta OK (status 200-299) como sucesso
                     if (response.ok) {
                         updateProjectBtn.innerHTML = 'Atualizado!';
-                        setTimeout(() => { updateProjectBtn.innerHTML = originalBtnHTML; }, 2000);
+                        setTimeout(() => { updateProjectBtn.innerHTML = 'Atualizar no Notion'; }, 2000);
                     } else {
                         // Tenta ler a mensagem de erro do N8N, se houver
                         const errorData = await response.json().catch(() => null);
@@ -830,7 +812,7 @@
                     console.error('Erro ao atualizar projeto:', error);
                     alert(`Erro ao atualizar: ${error.message}`);
                     updateProjectBtn.innerHTML = 'Falhou!';
-                     setTimeout(() => { updateProjectBtn.innerHTML = originalBtnHTML; }, 3000);
+                     setTimeout(() => { updateProjectBtn.innerHTML = 'Atualizar no Notion'; }, 3000);
                 } finally {
                     updateProjectBtn.disabled = false;
                 }

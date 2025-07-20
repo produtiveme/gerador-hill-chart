@@ -211,7 +211,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.26</p>
+        <p>Versão 2.0.32</p>
     </footer>
 
     <!-- Modal para Edição de Funcionalidade -->
@@ -361,10 +361,18 @@
                 const pointsGroup = document.getElementById('points-group');
                 if (!pointsGroup) return;
                 pointsGroup.innerHTML = '';
+                
+                const labelCounts = new Map();
+
                 points.forEach(point => {
                     const pos = getPositionOnHill(point.progress);
+                    const key = Math.round(pos.x);
+                    const count = labelCounts.get(key) || 0;
+                    const labelYOffset = -15 - (count * 15);
+                    
                     const pointGroup = document.createElementNS(svgNS, 'g');
                     pointGroup.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+                    
                     const circle = document.createElementNS(svgNS, 'circle');
                     circle.setAttribute('r', '8');
                     circle.setAttribute('fill', point.color);
@@ -372,13 +380,17 @@
                     circle.setAttribute('stroke-width', '2');
                     circle.setAttribute('class', 'point-circle');
                     circle.dataset.id = point.id;
+                    
                     const label = document.createElementNS(svgNS, 'text');
                     label.setAttribute('class', 'point-label');
-                    label.setAttribute('y', '-15');
+                    label.setAttribute('y', labelYOffset);
                     label.textContent = point.label;
+                    
                     pointGroup.appendChild(circle);
                     pointGroup.appendChild(label);
                     pointsGroup.appendChild(pointGroup);
+
+                    labelCounts.set(key, count + 1);
                 });
                 updateTaskList();
                 updateTotalProgress();
@@ -387,10 +399,14 @@
             function updateTaskList() {
                 if (!taskList) return;
                 taskList.innerHTML = '';
-                if (points.length === 0) {
+
+                // Ordena uma cópia da lista de pontos
+                const sortedPoints = [...points].sort((a, b) => b.progress - a.progress);
+
+                if (sortedPoints.length === 0) {
                     taskList.innerHTML = '<li class="p-1 text-gray-400">Nenhuma funcionalidade adicionada ainda.</li>';
                 } else {
-                    points.forEach(point => {
+                    sortedPoints.forEach(point => {
                         const li = document.createElement('li');
                         li.className = 'flex items-center justify-between p-2 rounded-md hover:bg-gray-50';
                         li.dataset.id = point.id;
@@ -584,7 +600,8 @@
                         currentY += sectionSpacing;
                         exportSvg.appendChild(createText('Funcionalidades do Sistema:', 40, currentY, 'start', '600', '18px', '#6B9E83', 'Bricolage Grotesque, sans-serif'));
                         currentY += listTitleHeight;
-                        points.forEach(point => {
+                        const sortedPointsForExport = [...points].sort((a,b) => b.progress - a.progress);
+                        sortedPointsForExport.forEach(point => {
                             const colorDot = document.createElementNS(svgNS, 'circle');
                             colorDot.setAttribute('cx', 50);
                             colorDot.setAttribute('cy', currentY - 4);

@@ -166,7 +166,7 @@
 
         <!-- Contêiner do Gráfico -->
         <div id="chart-container" class="relative w-full mb-6 bg-white">
-            <svg id="hill-chart-svg" class="w-full" viewBox="0 0 800 250"></svg>
+            <svg id="hill-chart-svg" class="w-full" viewBox="0 0 800 350"></svg>
             <div class="flex justify-between mt-2 text-sm md:text-base font-semibold text-gray-600 px-2">
                 <span class="text-left w-1/3">Descobrindo a solução<br><span class="font-normal text-gray-500">(Uphill)</span></span>
                 <span class="text-center w-1/3 text-[#FF4E00]">Solução conhecida!</span>
@@ -211,7 +211,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.41</p>
+        <p>Versão 2.0.45</p>
     </footer>
 
     <!-- Modal para Edição de Funcionalidade -->
@@ -269,9 +269,9 @@
             const svg = document.getElementById('hill-chart-svg');
             const svgNS = "http://www.w3.org/2000/svg";
             const width = 800;
-            const height = 250;
+            const height = 350;
             const hillHeight = 150;
-            const baseY = 210;
+            const baseY = 310;
             const hillTopX = width / 2;
 
             // --- Estado da Aplicação ---
@@ -560,7 +560,7 @@
                 try {
                     // Define tamanhos e espaçamentos
                     const exportWidth = 800;
-                    const chartAreaHeight = 280; // Altura para o gráfico e suas legendas
+                    const chartAreaHeight = 380; 
                     const sectionSpacing = 20;
                     const progressBarHeight = 50;
                     const listTitleHeight = 30;
@@ -610,7 +610,7 @@
                     };
                     
                     // Adiciona as legendas do gráfico na posição correta
-                    const chartLabelsY = 240;
+                    const chartLabelsY = 330;
                     exportSvg.appendChild(createText('Descobrindo a solução', 20, chartLabelsY, 'start', '600', '14px', '#4b5563'));
                     exportSvg.appendChild(createText('(Uphill)', 20, chartLabelsY + 15, 'start', 'normal', '12px', '#6b7280'));
                     

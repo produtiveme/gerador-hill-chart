@@ -207,7 +207,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.0.0</p>
+        <p>Versão 2.0.12</p>
     </footer>
 
     <!-- Modal para Exportação Mermaid -->
@@ -816,16 +816,14 @@
                         }),
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Falha ao atualizar o projeto no servidor.');
-                    }
-
-                    const result = await response.json();
-                    if (result.success) {
+                    // CORREÇÃO 1: Trata qualquer resposta OK (status 200-299) como sucesso
+                    if (response.ok) {
                         updateProjectBtn.innerHTML = 'Atualizado!';
                         setTimeout(() => { updateProjectBtn.innerHTML = originalBtnHTML; }, 2000);
                     } else {
-                        throw new Error(result.message || 'Ocorreu um erro desconhecido.');
+                        // Tenta ler a mensagem de erro do N8N, se houver
+                        const errorData = await response.json().catch(() => null);
+                        throw new Error(errorData?.message || 'Falha ao atualizar o projeto no servidor.');
                     }
 
                 } catch (error) {
@@ -843,6 +841,7 @@
                 footer.style.display = 'none';
                 projectSelectionPage.style.display = 'block';
                 currentProject = null; // Limpa o projeto atual ao voltar
+                loadProjects(); // CORREÇÃO 2: Recarrega os projetos ao voltar
             }
 
             function initializeMainApp() {
@@ -889,6 +888,7 @@
                     loginForm.addEventListener('submit', handleLogin);
                     projectList.addEventListener('click', handleProjectSelection);
                     backToProjectsBtn.addEventListener('click', showProjectSelection);
+                    refreshProjectsBtn.addEventListener('click', loadProjects); // CORREÇÃO 2: Adiciona o listener para o botão de atualizar
                     initializeMainApp(); // Inicializa os listeners da app principal uma vez
                 }
             }

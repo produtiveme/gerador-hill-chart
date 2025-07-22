@@ -50,18 +50,6 @@
         .delete-btn:hover {
             color: #ef4444;
         }
-        .color-option {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 3px solid transparent;
-            transition: border-color 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .color-option.selected {
-            border-color: #4f46e5;
-        }
         /* Estilos do Modal */
         .modal-overlay {
             position: fixed;
@@ -184,12 +172,6 @@
                     <option value="5">Alto</option>
                     <option value="7">Muito Alto</option>
                 </select>
-                <div id="color-palette" class="flex items-center justify-center gap-2 p-2 bg-gray-100 rounded-lg">
-                    <div class="color-option selected" style="background-color: #FF4E00;" data-color="#FF4E00"></div>
-                    <div class="color-option" style="background-color: #FFC280;" data-color="#FFC280"></div>
-                    <div class="color-option" style="background-color: #1D1C1B;" data-color="#1D1C1B"></div>
-                    <div class="color-option" style="background-color: #6B9E83;" data-color="#6B9E83"></div>
-                </div>
             </div>
              <div class="flex flex-col sm:flex-row gap-3">
                 <button id="add-point-btn" class="w-full sm:w-auto flex-grow bg-[#FF4E00] text-white font-semibold px-6 py-2 rounded-lg hover:bg-[#E64600] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF4E00] transition-colors shadow-md">
@@ -217,7 +199,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 2.1.0</p>
+        <p>Versão 2.1.5</p>
     </footer>
 
     <!-- Modal para Edição de Funcionalidade -->
@@ -239,12 +221,6 @@
                             <option value="5">Alto</option>
                             <option value="7">Muito Alto</option>
                         </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Cor</label>
-                        <div id="edit-color-palette" class="mt-2 flex items-center justify-start gap-3">
-                            <!-- Opções de cores serão inseridas aqui -->
-                        </div>
                     </div>
                     <div>
                         <label for="edit-point-progress" class="block text-sm font-medium text-gray-700">Progresso (%)</label>
@@ -305,7 +281,6 @@
             const exportJsonBtn = document.getElementById('export-json-btn');
             const importJsonBtn = document.getElementById('import-json-btn');
             const importFileInput = document.getElementById('import-file-input');
-            const colorPalette = document.getElementById('color-palette');
             const totalProgressBar = document.getElementById('total-progress-bar');
             const totalProgressText = document.getElementById('total-progress-text');
             const backToProjectsBtn = document.getElementById('back-to-projects-btn');
@@ -318,7 +293,6 @@
             const editPointIdInput = document.getElementById('edit-point-id');
             const editPointLabelInput = document.getElementById('edit-point-label');
             const editPointProgressInput = document.getElementById('edit-point-progress');
-            const editColorPalette = document.getElementById('edit-color-palette');
             const editPointComplexity = document.getElementById('edit-point-complexity');
             const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
 
@@ -473,6 +447,17 @@
                 }
             }
 
+            function getColorForComplexity(complexityValue) {
+                const value = parseInt(complexityValue, 10);
+                 switch (value) {
+                    case 1: return '#6B9E83'; // Cambridge Blue
+                    case 3: return '#1D1C1B'; // Eerie Black
+                    case 5: return '#FFC280'; // Fawn
+                    case 7: return '#FF4E00'; // Aerospace Orange
+                    default: return '#9ca3af'; // Gray
+                }
+            }
+
             function updateTaskList() {
                 if (!taskList) return;
                 taskList.innerHTML = '';
@@ -579,15 +564,15 @@
 
             function handleAddPoint() {
                 const label = newPointInput.value.trim();
-                const selectedColor = colorPalette.querySelector('.selected').dataset.color;
                 const complexity = parseInt(newPointComplexity.value, 10);
+                const color = getColorForComplexity(complexity);
 
-                if (label && selectedColor) {
+                if (label) {
                     points.push({
                         id: nextPointId++,
                         label: label,
                         progress: 5,
-                        color: selectedColor,
+                        color: color,
                         complexity: complexity
                     });
                     newPointInput.value = '';
@@ -778,7 +763,10 @@
                     try {
                         const importedData = JSON.parse(event.target.result);
                         if (Array.isArray(importedData) && (importedData.length === 0 || (importedData[0].id !== undefined && importedData[0].label && importedData[0].progress !== undefined))) {
-                            importedData.forEach(p => { if (p.complexity === undefined) p.complexity = 3; });
+                            importedData.forEach(p => { 
+                                if (p.complexity === undefined) p.complexity = 3;
+                                p.color = getColorForComplexity(p.complexity);
+                            });
                             points = importedData;
                             nextPointId = points.length > 0 ? Math.max(...points.map(p => p.id)) + 1 : 0;
                             renderPoints();
@@ -817,15 +805,6 @@
             
             function onMouseLeave() { if (isDragging) { onMouseUp(); } }
             
-            function handleColorSelect(e) {
-                const target = e.target.closest('.color-option');
-                if(target) {
-                    const palette = target.parentElement;
-                    palette.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
-                    target.classList.add('selected');
-                }
-            }
-
             async function handleLogin(e) {
                 e.preventDefault();
                 const email = emailInput.value;
@@ -914,7 +893,10 @@
                         try {
                             const importedData = JSON.parse(selectedProject.jsonData);
                             if (Array.isArray(importedData)) {
-                                importedData.forEach(p => { if (p.complexity === undefined) p.complexity = 3; });
+                                importedData.forEach(p => { 
+                                    if (p.complexity === undefined) p.complexity = 3; 
+                                    p.color = getColorForComplexity(p.complexity);
+                                });
                                 points = importedData;
                                 nextPointId = points.length > 0 ? Math.max(...points.map(p => p.id)) + 1 : 0;
                                 renderPoints();
@@ -984,20 +966,6 @@
                 editPointLabelInput.value = point.label;
                 editPointProgressInput.value = point.progress.toFixed(0);
                 editPointComplexity.value = point.complexity || 3;
-                
-                editColorPalette.innerHTML = '';
-                const colors = ['#FF4E00', '#FFC280', '#1D1C1B', '#6B9E83'];
-                colors.forEach(color => {
-                    const colorDiv = document.createElement('div');
-                    colorDiv.className = 'color-option';
-                    colorDiv.style.backgroundColor = color;
-                    colorDiv.dataset.color = color;
-                    if (color === point.color) {
-                        colorDiv.classList.add('selected');
-                    }
-                    editColorPalette.appendChild(colorDiv);
-                });
-
                 editModal.classList.add('visible');
             }
 
@@ -1009,8 +977,8 @@
 
                 const newLabel = editPointLabelInput.value.trim();
                 const newProgress = parseFloat(editPointProgressInput.value);
-                const newColor = editColorPalette.querySelector('.selected').dataset.color;
                 const newComplexity = parseInt(editPointComplexity.value, 10);
+                const newColor = getColorForComplexity(newComplexity);
 
                 if (newLabel === '') {
                     alert('O nome da funcionalidade não pode ser vazio.');
@@ -1040,12 +1008,10 @@
                 importJsonBtn.addEventListener('click', handleImportJson);
                 importFileInput.addEventListener('change', handleFileSelect);
                 taskList.addEventListener('click', handleTaskListClick);
-                colorPalette.addEventListener('click', handleColorSelect);
                 updateProjectBtn.addEventListener('click', handleUpdateProject);
                 
                 editForm.addEventListener('submit', handleSaveEdit);
                 closeEditModalBtn.addEventListener('click', () => editModal.classList.remove('visible'));
-                editColorPalette.addEventListener('click', handleColorSelect);
 
                 svg.addEventListener('mousedown', onMouseDown);
                 document.addEventListener('mousemove', onMouseMove);

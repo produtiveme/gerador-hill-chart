@@ -211,7 +211,7 @@
     <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <footer id="footer" class="text-center mt-8 text-gray-500 text-sm hidden lg:block">
-        <p>Versão 3.2.2</p>
+        <p>Versão 3.3.4</p>
     </footer>
 
     <!-- Modal para Edição de Funcionalidade -->
@@ -911,7 +911,7 @@
             }
 
             async function loadProjects() {
-                const n8nProjectsUrl = 'https://work.produ-cloud.com/webhook/hillchart_carrega_projeto-x';
+                const n8nProjectsUrl = 'https://work.produ-cloud.com/webhook/hillchart_carrega_projeto';
                 
                 projectList.innerHTML = '';
                 projectListLoader.style.display = 'block';
@@ -990,7 +990,7 @@
                 points = []; // Limpa os pontos do projeto anterior
                 renderPoints();
 
-                const n8nFuncsUrl = 'https://work.produ-cloud.com/webhook/hillchart_carrega_projeto-x';
+                const n8nFuncsUrl = 'https://work.produ-cloud.com/webhook/hillchart_carrega_projeto';
 
                 try {
                     const response = await fetchWithAuth(n8nFuncsUrl, 'POST', { projectId: projectId });

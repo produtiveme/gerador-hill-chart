@@ -1,0 +1,19 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                display: ['"Bricolage Grotesque"', 'sans-serif'],
+            },
+            colors: {
+                'brand-orange': '#FF4E00',
+            },
+        },
+    },
+    plugins: [],
+}

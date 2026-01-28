@@ -12,12 +12,16 @@ export const api = {
             throw new Error('Erro ao buscar sistemas');
         }
         const data = await response.json();
+        // API retorna os dados diretamente do Notion (property_*)
         return data.map((item: any) => ({
-            id: item.ID_Notion_Projeto,
-            name: item.Nome_Projeto,
-            system: item.Sistema_Projeto,
-            deadline: item.Prazo_Final_Projeto,
-            progress: item.Progresso,
+            id: item.id,
+            name: item.name,
+            property_descri_o: item.property_descri_o,
+            property_funcionalidade: item.property_funcionalidade,
+            property_conclus_o: item.property_conclus_o,
+            property_arquivar: item.property_arquivar,
+            property_status: item.property_status,
+            property_prazo: item.property_prazo,
         }));
     },
 
@@ -29,13 +33,16 @@ export const api = {
             throw new Error('Erro ao buscar funcionalidades');
         }
         const data = await response.json();
+        // API retorna os dados diretamente do Notion (property_*)
         return data.map((item: any) => ({
-            id: item.ID_Funcionalidade_Notion,
-            name: item.Nome_Funcionalidade,
-            property_projeto: item.property_projeto,
-            property_progresso: item.property_progresso,
-            property_tamanho: item.property_tamanho,
+            id: item.id,
+            name: item.name,
+            property_descri_o: item.property_descri_o,
+            property_sistema: item.property_sistema,
             property_f_tamanho: item.property_f_tamanho,
+            property_tamanho: item.property_tamanho,
+            property_progresso: item.property_progresso,
+            property_tipo: item.property_tipo,
             url: item.url,
         }));
     },

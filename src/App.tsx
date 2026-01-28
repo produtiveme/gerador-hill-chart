@@ -7,7 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 function App() {
     return (
         <AuthProvider>
-            <BrowserRouter>
+            <BrowserRouter basename="/gerador-hill-chart">
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route

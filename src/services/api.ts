@@ -2,45 +2,12 @@ import type { Sistema, Funcionalidade } from '../types';
 
 const BASE_API_URL = 'https://work.produ-cloud.com/webhook';
 
-let authToken: string | null = null;
-let onUnauthorized: (() => void) | null = null;
-
-export function setAuthToken(token: string | null) {
-    authToken = token;
-}
-
-export function setUnauthorizedHandler(handler: () => void) {
-    onUnauthorized = handler;
-}
-
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(options.headers as Record<string, string>),
-    };
-
-    if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-    }
-
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
-
-    if (response.status === 401 || response.status === 403) {
-        if (onUnauthorized) {
-            onUnauthorized();
-        }
-        throw new Error('Sessão inválida ou expirada.');
-    }
-
-    return response;
-}
-
 export const api = {
+    // Internal endpoints - NO authentication required
     async fetchSistemas(): Promise<Sistema[]> {
-        const response = await fetchWithAuth(`${BASE_API_URL}/sodapop-carrega-todo-projeto`);
+        const response = await fetch(`${BASE_API_URL}/sodapop-carrega-todo-projeto`, {
+            headers: { 'Content-Type': 'application/json' },
+        });
         if (!response.ok) {
             throw new Error('Erro ao buscar sistemas');
         }
@@ -55,7 +22,9 @@ export const api = {
     },
 
     async fetchFuncionalidades(): Promise<Funcionalidade[]> {
-        const response = await fetchWithAuth(`${BASE_API_URL}/sodapop-carrega-todo-funcionalidade`);
+        const response = await fetch(`${BASE_API_URL}/sodapop-carrega-todo-funcionalidade`, {
+            headers: { 'Content-Type': 'application/json' },
+        });
         if (!response.ok) {
             throw new Error('Erro ao buscar funcionalidades');
         }

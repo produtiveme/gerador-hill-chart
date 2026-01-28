@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { api, setAuthToken, setUnauthorizedHandler } from '../services/api';
+import { api } from '../services/api';
 import type { Sistema } from '../types';
 import SystemCard from '../components/SystemCard';
 import ChartViewer from './ChartViewer';
@@ -11,19 +11,8 @@ export default function Home() {
     const [selectedSystem, setSelectedSystem] = useState<Sistema | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const { token, logout } = useAuth();
+    const { logout } = useAuth();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        // Configure authentication
-        if (token) {
-            setAuthToken(token);
-        }
-        setUnauthorizedHandler(() => {
-            logout();
-            navigate('/login');
-        });
-    }, [token, logout, navigate]);
 
     useEffect(() => {
         async function load() {
